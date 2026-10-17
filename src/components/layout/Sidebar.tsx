@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from 'react-router-dom';
-import { LogOut, X } from 'lucide-react';
+import { X } from 'lucide-react';
 import { Logo } from '../brand/Logo';
 import { NAV_SECTIONS, type NavItem } from '../../routes/navigation';
 import { useAuth } from '../../context/AuthContext';
@@ -19,7 +19,7 @@ function isItemActive(item: NavItem, pathname: string) {
 }
 
 export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
-  const { isAdmin, can, logout } = useAuth();
+  const { isAdmin, can } = useAuth();
   const { pathname } = useLocation();
 
   const content = (
@@ -33,7 +33,7 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
         </button>
       </div>
 
-      <nav className="flex-1 space-y-5 overflow-y-auto px-4 pb-4 pt-2" aria-label="Main navigation">
+      <nav className="flex-1 space-y-5 overflow-y-auto px-4 pb-6 pt-2" aria-label="Main navigation">
         {NAV_SECTIONS.filter((s) => !s.adminOnly || isAdmin).map((section) => {
           const items = section.items.filter((i) => !i.permission || can(i.permission));
           if (!items.length) return null;
@@ -68,16 +68,6 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
           );
         })}
       </nav>
-
-      <div className="px-4 pb-5">
-        <button
-          onClick={() => logout('You have been signed out.')}
-          className="flex w-full items-center gap-3 rounded-2xl border border-line bg-surface px-4 py-3 text-sm font-medium text-ink shadow-card transition hover:border-rose-200 hover:text-rose-500"
-        >
-          <LogOut className="h-[18px] w-[18px] text-brand-500" />
-          Logout
-        </button>
-      </div>
     </div>
   );
 
