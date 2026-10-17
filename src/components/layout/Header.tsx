@@ -1,0 +1,184 @@
+import {
+  CalendarDays,
+  CalendarCheck,
+  ChevronDown,
+  KeyRound,
+  LogOut,
+  Menu,
+  Moon,
+  Settings,
+  Sun,
+  UserRound,
+} from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Avatar, Dropdown, MenuItem } from '../ui';
+import { useAuth } from '../../context/AuthContext';
+import { useData } from '../../context/DataContext';
+import { useTheme } from '../../context/ThemeContext';
+import { useNow } from '../../hooks';
+import { formatDate, formatTime, todayISO, toISODate, weekdayName } from '../../utils/date';
+import { cn } from '../../utils/helpers';
+import type { ThemePreference } from '../../types';
+
+function DatePill() {
+  const now = useNow(15000);
+  const { meetings, followUps, leads } = useData();
+  const navigate = useNavigate();
+  const today = todayISO();
+  const leadName = (id: string) => leads.find((l) => l.id === id)?.company ?? 'General';
+  const agenda = [
+    ...meetings.filter((m) => m.date === today && m.status === 'Scheduled').map((m) => ({ id: m.id, time: m.time, title: m.title, sub: leadName(m.leadId), kind: 'Meeting' })),
+    ...followUps.filter((f) => f.date === today && f.status === 'Pending').map((f) => ({ id: f.id, time: f.time, title: f.title, sub: leadName(f.leadId), kind: 'Follow-up' })),
+  ].sort((a, b) => a.time.localeCompare(b.time));
+
+  return (
+    <Dropdown
+      panelClassName="w-80"
+      trigger={({ toggle, open }) => (
+        <button
+          onClick={toggle}
+          aria-expanded={open}
+          className="hidden h-12 items-center gap-3 rounded-2xl border border-line/80 bg-surface pl-2 pr-3 shadow-card transition hover:border-brand-300 xl:flex"
+        >
+          <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-brand-gradient text-white">
+            <CalendarDays className="h-4 w-4" />
+          </span>
+          <span className="text-left leading-tight">
+            <span className="block text-sm font-bold text-ink">{formatDate(toISODate(now), 'DD MMM YYYY')}</span>
+            <span className="block text-[11px] text-muted">
+              {weekdayName(now)}, {formatTime(`${now.getHours()}:${now.getMinutes()}`)}
+            </span>
+          </span>
+          <ChevronDown className={cn('ml-2 h-4 w-4 text-muted transition', open && 'rotate-180')} />
+        </button>
+      )}
+    >
+      {(close) => (
+        <div>
+          <p className="px-3 pb-2 pt-1.5 text-xs font-semibold uppercase tracking-wide text-muted">Today's agenda</p>
+          {agenda.length === 0 ? (
+            <p className="px-3 py-4 text-sm text-muted">Nothing scheduled for today.</p>
+          ) : (
+            <ul className="max-h-64 overflow-y-auto">
+              {agenda.map((a) => (
+                <li key={a.id} className="flex items-start gap-3 rounded-lg px-3 py-2">
+                  <span className="mt-0.5 w-16 shrink-0 text-xs font-semibold text-brand-600 dark:text-brand-300">{formatTime(a.time)}</span>
+                  <span className="min-w-0">
+                    <span className="block truncate text-sm font-medium text-ink">{a.title}</span>
+                    <span className="block truncate text-xs text-muted">
+                      {a.kind} · {a.sub}
+                    </span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+          <div className="mt-1 border-t border-line pt-1">
+            <MenuItem icon={<CalendarDays />} onClick={() => { close(); navigate('/calendar'); }}>
+              Open calendar
+            </MenuItem>
+          </div>
+        </div>
+      )}
+    </Dropdown>
+  );
+}
+
+function ThemeMenu() {
+  const { theme, resolved, setTheme } = useTheme();
+  const options: { value: ThemePreference; label: string; icon: JSX.Element }[] = [
+    { value: 'light', label: 'Light', icon: <Sun /> },
+    { value: 'dark', label: 'Dark', icon: <Moon /> },
+  ];
+  return (
+    <Dropdown
+      panelClassName="w-44"
+      trigger={({ toggle, open }) => (
+        <button
+          onClick={toggle}
+          aria-expanded={open}
+          aria-label="Change theme"
+          className="hidden h-12 items-center gap-2 rounded-2xl border border-line/80 bg-surface px-3.5 text-ink shadow-card transition hover:border-brand-300 sm:flex"
+        >
+          {resolved === 'dark' ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
+          <ChevronDown className={cn('h-4 w-4 text-muted transition', open && 'rotate-180')} />
+        </button>
+      )}
+    >
+      {(close) =>
+        options.map((o) => (
+          <MenuItem key={o.value} icon={o.icon} active={theme === o.value} onClick={() => { setTheme(o.value); close(); }}>
+            {o.label}
+          </MenuItem>
+        ))
+      }
+    </Dropdown>
+  );
+}
+
+function ProfileMenu() {
+  const { user, role, logout } = useAuth();
+  const navigate = useNavigate();
+  if (!user) return null;
+  const go = (path: string, close: () => void) => {
+    close();
+    navigate(path);
+  };
+  return (
+    <Dropdown
+      panelClassName="w-60"
+      trigger={({ toggle, open }) => (
+        <button
+          onClick={toggle}
+          aria-expanded={open}
+          aria-label="Open profile menu"
+          className="flex h-11 items-center gap-2.5 rounded-2xl border border-line/80 bg-surface pl-1.5 pr-2 shadow-card transition hover:border-brand-300 sm:h-12 sm:pr-3"
+        >
+          <Avatar name={user.name} size="sm" className="sm:h-9 sm:w-9" />
+          <span className="hidden max-w-[110px] truncate text-sm font-bold text-ink md:block">{user.name}</span>
+          <ChevronDown className={cn('hidden h-4 w-4 text-muted transition sm:block', open && 'rotate-180')} />
+        </button>
+      )}
+    >
+      {(close) => (
+        <>
+          <div className="mb-1 border-b border-line px-3 pb-2.5 pt-1.5">
+            <p className="truncate text-sm font-bold text-ink">{user.name}</p>
+            <p className="truncate text-xs text-muted">{user.email}</p>
+            <p className="mt-1 text-[11px] font-semibold text-brand-600 dark:text-brand-300">{role?.name}</p>
+          </div>
+          <MenuItem icon={<UserRound />} onClick={() => go('/profile', close)}>My Profile</MenuItem>
+          <MenuItem icon={<KeyRound />} onClick={() => go('/change-password', close)}>Change Password</MenuItem>
+          <MenuItem icon={<CalendarCheck />} onClick={() => go('/follow-ups', close)}>My Follow-ups</MenuItem>
+          <MenuItem icon={<Settings />} onClick={() => go('/settings', close)}>Settings</MenuItem>
+          <div className="mt-1 border-t border-line pt-1">
+            <MenuItem icon={<LogOut />} danger onClick={() => { close(); logout('You have been signed out.'); }}>
+              Logout
+            </MenuItem>
+          </div>
+        </>
+      )}
+    </Dropdown>
+  );
+}
+
+export function Header({ onMenu }: { onMenu: () => void }) {
+  return (
+    <header className="sticky top-0 z-20 bg-canvas/85 px-4 pb-3 pt-4 backdrop-blur-md sm:px-6 lg:px-7">
+      <div className="flex items-center justify-between gap-3">
+        <button
+          onClick={onMenu}
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-line/80 bg-surface text-ink shadow-card lg:hidden"
+          aria-label="Open menu"
+        >
+          <Menu className="h-5 w-5" />
+        </button>
+        <div className="ml-auto flex items-center gap-2 sm:gap-3">
+          <DatePill />
+          <ThemeMenu />
+          <ProfileMenu />
+        </div>
+      </div>
+    </header>
+  );
+}
