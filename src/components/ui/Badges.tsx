@@ -2,7 +2,13 @@ import type { ReactNode } from 'react';
 import type { LeadStatus, Priority } from '../../types';
 import { avatarGradient, cn, initials } from '../../utils/helpers';
 
-const STATUS_STYLES: Record<LeadStatus, string> = {
+const STATUS_STYLES: Record<string, string> = {
+  New: 'bg-sky-50 text-sky-600 ring-sky-200/70 dark:bg-sky-500/15 dark:text-sky-300 dark:ring-sky-400/20',
+  Contacted: 'bg-purple-50 text-purple-600 ring-purple-200/70 dark:bg-purple-500/15 dark:text-purple-300 dark:ring-purple-400/20',
+  'Meeting Scheduled': 'bg-blue-50 text-blue-600 ring-blue-200/70 dark:bg-blue-500/15 dark:text-blue-300 dark:ring-blue-400/20',
+  'Proposal Sent': 'bg-cyan-50 text-cyan-600 ring-cyan-200/70 dark:bg-cyan-500/15 dark:text-cyan-300 dark:ring-cyan-400/20',
+  Negotiation: 'bg-amber-50 text-amber-600 ring-amber-200/70 dark:bg-amber-500/15 dark:text-amber-300 dark:ring-amber-400/20',
+  Won: 'bg-emerald-50 text-emerald-600 ring-emerald-200/70 dark:bg-emerald-500/15 dark:text-emerald-300 dark:ring-emerald-400/20',
   Scheduled: 'bg-blue-50 text-blue-600 ring-blue-200/70 dark:bg-blue-500/15 dark:text-blue-300 dark:ring-blue-400/20',
   Completed: 'bg-emerald-50 text-emerald-600 ring-emerald-200/70 dark:bg-emerald-500/15 dark:text-emerald-300 dark:ring-emerald-400/20',
   Pending: 'bg-indigo-50 text-indigo-600 ring-indigo-200/70 dark:bg-indigo-500/15 dark:text-indigo-300 dark:ring-indigo-400/20',
@@ -10,12 +16,13 @@ const STATUS_STYLES: Record<LeadStatus, string> = {
   'In Progress': 'bg-amber-50 text-amber-600 ring-amber-200/70 dark:bg-amber-500/15 dark:text-amber-300 dark:ring-amber-400/20',
 };
 
-export function StatusBadge({ status, className }: { status: LeadStatus; className?: string }) {
+export function StatusBadge({ status, className }: { status: LeadStatus | string; className?: string }) {
+  const style = STATUS_STYLES[status] || 'bg-slate-50 text-slate-600 ring-slate-200/70 dark:bg-slate-500/15 dark:text-slate-300 dark:ring-slate-400/20';
   return (
     <span
       className={cn(
         'inline-flex items-center whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-semibold ring-1 ring-inset',
-        STATUS_STYLES[status],
+        style,
         className,
       )}
     >

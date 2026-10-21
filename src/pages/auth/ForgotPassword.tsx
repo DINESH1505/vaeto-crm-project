@@ -69,7 +69,7 @@ export default function ForgotPassword() {
             </div>
           ) : (
             <p className="text-xs text-rose-500">
-              No demo account found with this email. Try <b>dinesh@vaetotech.com</b> or <b>admin@vaetotech.com</b>.
+              No demo account found with this email. Try <b>user@vaetotech.com</b> or <b>admin@vaetotech.com</b>.
             </p>
           )}
 

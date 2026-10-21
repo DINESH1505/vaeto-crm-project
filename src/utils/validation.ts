@@ -1,14 +1,42 @@
+import { isValidPhoneNumber, parsePhoneNumber, type CountryCode } from 'libphonenumber-js';
+
 export type Errors<T> = Partial<Record<keyof T, string>>;
 
 export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
-export const PHONE_RE = /^\+?[0-9\s-]{7,16}$/;
 
 export function isEmail(value: string): boolean {
   return EMAIL_RE.test(value.trim());
 }
 
-export function isPhone(value: string): boolean {
-  return PHONE_RE.test(value.trim());
+/**
+ * Validates international phone numbers using Google's libphonenumber.
+ * Validates number lengths and country-specific numbering rules without simple fixed-length regex.
+ */
+export function isPhone(value: string | undefined | null, defaultCountry: CountryCode = 'IN'): boolean {
+  if (!value || !value.trim()) return false;
+  const trimmed = value.trim();
+  // Reject alphabetic characters and unsupported special characters
+  if (/[a-zA-Z]/.test(trimmed)) return false;
+  try {
+    return isValidPhoneNumber(trimmed, defaultCountry);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Normalizes a phone number to standard E.164 format (e.g., +919876543210).
+ */
+export function normalizePhone(value: string | undefined | null, defaultCountry: CountryCode = 'IN'): string {
+  if (!value || !value.trim()) return '';
+  const trimmed = value.trim();
+  try {
+    const parsed = parsePhoneNumber(trimmed, defaultCountry);
+    if (parsed && parsed.isValid()) {
+      return parsed.number; // E.164 format
+    }
+  } catch {}
+  return trimmed;
 }
 
 export function required(value: string | undefined | null, label: string): string | undefined {

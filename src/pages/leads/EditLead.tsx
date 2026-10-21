@@ -5,11 +5,14 @@ import { useData } from '../../context/DataContext';
 import { useToast } from '../../context/ToastContext';
 import { LeadInput, NextFollowUpInput } from '../../context/DataContext';
 
+import { useState } from 'react';
+
 export default function EditLead() {
   const { id } = useParams<{ id: string }>();
-  const { leads, updateLead } = useData();
+  const { leads, updateLead, refreshLeads } = useData();
   const toast = useToast();
   const navigate = useNavigate();
+  const [loading, setLoading] = useState(false);
 
   const lead = leads.find((l) => l.id === id);
 
@@ -27,10 +30,19 @@ export default function EditLead() {
     );
   }
 
-  const handleUpdate = (patch: LeadInput, nextFollowUp?: NextFollowUpInput) => {
-    updateLead(lead.id, patch, nextFollowUp);
-    toast.success(`Lead "${patch.company}" updated.`);
-    navigate(`/leads/${lead.id}`);
+  const handleUpdate = async (patch: LeadInput, nextFollowUp?: NextFollowUpInput) => {
+    try {
+      setLoading(true);
+      await updateLead(lead.id, patch, nextFollowUp);
+      await refreshLeads();
+      toast.success(`Lead "${patch.company}" updated successfully.`);
+      navigate(`/leads/${lead.id}`);
+    } catch (err: any) {
+      console.error('Failed to update lead:', err);
+      toast.error(err?.message || 'Failed to update lead in database.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -51,7 +63,7 @@ export default function EditLead() {
         </div>
       </div>
 
-      <LeadForm initialLead={lead} onSubmit={handleUpdate} submitLabel="Save Changes" />
+      <LeadForm initialLead={lead} onSubmit={handleUpdate} submitLabel="Save Changes" loading={loading} />
     </div>
   );
 }

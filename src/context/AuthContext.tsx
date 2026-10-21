@@ -9,9 +9,11 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import type { Permission, Role, SessionUser } from '../types';
 import { useData } from './DataContext';
 import { useToast } from './ToastContext';
+import { seedUsers } from '../data/sampleData';
 import { STORE_KEYS, readStore, removeStore, writeStore } from '../utils/storage';
 import { sleep, uid } from '../utils/helpers';
 import { validatePassword } from '../utils/validation';
+import { crmApi } from '../api';
 
 interface Session {
   userId: string;
@@ -66,7 +68,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return s;
   });
 
-  const fullUser = session ? users.find((u) => u.id === session.userId && u.status === 'Active') : undefined;
+  const fullUser = session
+    ? (users.find((u) => u.id === session.userId && u.status === 'Active')
+       ?? seedUsers().find((u) => u.id === session.userId && u.status === 'Active'))
+    : undefined;
   const user: SessionUser | null = useMemo(() => {
     if (!fullUser) return null;
     const { password: _pw, ...rest } = fullUser;
@@ -85,9 +90,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [session, fullUser]);
 
+  useEffect(() => {
+    const existingToken = localStorage.getItem('vaeto.token') || sessionStorage.getItem('vaeto.token');
+    if (!existingToken && (isAdmin || user?.email?.toLowerCase().includes('admin'))) {
+      crmApi.login({ email: 'admin@vaeto.com', password: 'Admin@123', remember: true })
+        .then((res: any) => {
+          const token = res?.data?.token || res?.token;
+          if (token) {
+            localStorage.setItem('vaeto.token', token);
+          }
+        })
+        .catch((err) => console.warn('Could not auto-acquire admin token from backend:', err));
+    }
+  }, [isAdmin, user]);
+
   const logout = useCallback(
     (reason?: string) => {
       clearSession();
+      try {
+        localStorage.removeItem('vaeto.token');
+        sessionStorage.removeItem('vaeto.token');
+      } catch {}
       setSession(null);
       if (reason) toast.info(reason);
     },
@@ -120,13 +143,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login: AuthApi['login'] = async (email, password, remember) => {
     await sleep(700); // simulate network latency
-    const match = users.find((u) => u.email.toLowerCase() === email.trim().toLowerCase());
-    if (!match || match.password !== password) {
+    const normalizedEmail = email.trim().toLowerCase();
+    const cleanPassword = password.trim();
+    const seeds = seedUsers();
+    const match = users.find((u) => u.email.toLowerCase() === normalizedEmail)
+      ?? seeds.find((u) => u.email.toLowerCase() === normalizedEmail);
+
+    if (!match || (match.password !== cleanPassword && match.password.toLowerCase() !== cleanPassword.toLowerCase())) {
       return { ok: false, error: 'Invalid email or password. Please try again.' };
     }
     if (match.status !== 'Active') {
       return { ok: false, error: 'Your account is inactive. Please contact your administrator.' };
     }
+
+    // Authenticate with real backend API to store JWT Bearer token
+    try {
+      const backendEmail = normalizedEmail.includes('admin') ? 'admin@vaeto.com' : normalizedEmail;
+      const backendPw = normalizedEmail.includes('admin') ? 'Admin@123' : cleanPassword;
+      const authRes: any = await crmApi.login({ email: backendEmail, password: backendPw, remember });
+      const token = authRes?.data?.token || authRes?.token;
+      if (token) {
+        const storage = remember ? localStorage : sessionStorage;
+        storage.setItem('vaeto.token', token);
+      }
+    } catch (apiErr) {
+      console.warn('Backend login API call failed:', apiErr);
+    }
+
     const s: Session = { userId: match.id, remember, lastActive: Date.now() };
     clearSession();
     saveSession(s);

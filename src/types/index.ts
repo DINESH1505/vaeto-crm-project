@@ -1,6 +1,29 @@
-export type LeadStatus = 'Scheduled' | 'Completed' | 'Pending' | 'Lost' | 'In Progress';
+export type LeadStatus =
+  | 'New'
+  | 'Contacted'
+  | 'Meeting Scheduled'
+  | 'Proposal Sent'
+  | 'Negotiation'
+  | 'Won'
+  | 'Lost'
+  | 'Scheduled'
+  | 'Completed'
+  | 'Pending'
+  | 'In Progress';
 
-export const LEAD_STATUSES: LeadStatus[] = ['Scheduled', 'Completed', 'Pending', 'Lost', 'In Progress'];
+export const LEAD_STATUSES: LeadStatus[] = [
+  'New',
+  'Contacted',
+  'Meeting Scheduled',
+  'Proposal Sent',
+  'Negotiation',
+  'Won',
+  'Lost',
+  'Scheduled',
+  'In Progress',
+  'Completed',
+  'Pending',
+];
 
 export type Priority = 'Low' | 'Medium' | 'High';
 
@@ -18,6 +41,7 @@ export interface Lead {
   contactName: string;
   email: string;
   phone: string;
+  countryCode?: string;
   status: LeadStatus;
   /** Date of the most recent / planned meeting (yyyy-mm-dd). */
   meetingDate: string;

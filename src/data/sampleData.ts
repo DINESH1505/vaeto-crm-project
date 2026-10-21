@@ -17,10 +17,10 @@ import type {
 } from '../types';
 import { addDays, isoOffset, toISODate } from '../utils/date';
 
-export const SEED_VERSION = 3;
+export const SEED_VERSION = 4;
 
 export const DEMO_ACCOUNTS = [
-  { label: 'User', email: 'dinesh@vaetotech.com', password: 'Demo@123' },
+  { label: 'User', email: 'user@vaetotech.com', password: 'Demo@123' },
   { label: 'Admin', email: 'admin@vaetotech.com', password: 'Admin@123' },
 ] as const;
 
@@ -88,6 +88,21 @@ export function seedUsers(): User[] {
       bio: 'Keeps the Vaeto CRM running smoothly for the sales team.',
       createdAt: created,
       lastLogin: isoDateTime(-1, 18, 5),
+    },
+    {
+      id: 'u_user',
+      name: 'User',
+      email: 'user@vaetotech.com',
+      password: 'Demo@123',
+      roleId: 'role_user',
+      status: 'Active',
+      phone: '+91 98765 40020',
+      jobTitle: 'Sales Executive',
+      department: 'Sales',
+      location: 'Chennai, India',
+      bio: 'Vaeto CRM sales team member.',
+      createdAt: created,
+      lastLogin: isoDateTime(-1, 9, 40),
     },
     {
       id: 'u_dinesh',

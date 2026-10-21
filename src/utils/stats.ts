@@ -69,6 +69,12 @@ export function computeDashboardStats(leads: Lead[], followUps: FollowUp[], meet
 }
 
 export const STATUS_COLORS: Record<LeadStatus, string> = {
+  New: '#0ea5e9',
+  Contacted: '#a855f7',
+  'Meeting Scheduled': '#3b82f6',
+  'Proposal Sent': '#06b6d4',
+  Negotiation: '#f59e0b',
+  Won: '#10b981',
   Scheduled: '#3b82f6',
   Completed: '#14b8a6',
   Pending: '#f59e0b',

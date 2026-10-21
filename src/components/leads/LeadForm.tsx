@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { type CountryCode, parsePhoneNumber } from 'libphonenumber-js';
 import { LeadInput, NextFollowUpInput } from '../../context/DataContext';
 import { FollowUpType, LEAD_STATUSES, Lead, LeadStatus, Priority } from '../../types';
-import { Button, Input, Select, Textarea } from '../ui';
-import { isEmail, isPhone, required } from '../../utils/validation';
+import { Button, Input, Select, Textarea, PhoneInput } from '../ui';
+import { isEmail, isPhone, normalizePhone, required } from '../../utils/validation';
 
 interface LeadFormProps {
   initialLead?: Lead;
@@ -24,6 +25,18 @@ export function LeadForm({
   const [contactName, setContactName] = useState(initialLead?.contactName || '');
   const [email, setEmail] = useState(initialLead?.email || '');
   const [phone, setPhone] = useState(initialLead?.phone || '');
+  const [selectedCountry, setSelectedCountry] = useState<CountryCode>(() => {
+    if (initialLead?.countryCode) {
+      return initialLead.countryCode as CountryCode;
+    }
+    if (initialLead?.phone?.startsWith('+')) {
+      try {
+        const parsed = parsePhoneNumber(initialLead.phone);
+        if (parsed?.country) return parsed.country;
+      } catch {}
+    }
+    return 'IN';
+  });
   const [status, setStatus] = useState<LeadStatus>(initialLead?.status || 'Scheduled');
   const [meetingDate, setMeetingDate] = useState(initialLead?.meetingDate || '');
   const [meetingTime, setMeetingTime] = useState(initialLead?.meetingTime || '');
@@ -58,8 +71,11 @@ export function LeadForm({
     else if (!isEmail(email)) errs.email = 'Valid email is required';
 
     const reqPhone = required(phone, 'Phone number');
-    if (reqPhone) errs.phone = reqPhone;
-    else if (!isPhone(phone)) errs.phone = 'Valid phone number is required';
+    if (reqPhone) {
+      errs.phone = reqPhone;
+    } else if (!isPhone(phone, selectedCountry)) {
+      errs.phone = 'Please enter a valid phone number for the selected country.';
+    }
 
     setErrors(errs);
     return Object.keys(errs).length === 0;
@@ -69,11 +85,14 @@ export function LeadForm({
     e.preventDefault();
     if (!validate()) return;
 
+    const normalizedPhone = normalizePhone(phone, selectedCountry);
+
     const leadInput: LeadInput = {
       company,
       contactName,
       email,
-      phone,
+      phone: normalizedPhone || phone,
+      countryCode: selectedCountry,
       status,
       meetingDate,
       meetingTime,
@@ -127,11 +146,21 @@ export function LeadForm({
             error={errors.email}
             required
           />
-          <Input
+          <PhoneInput
             label="Phone Number"
-            placeholder="+91 98765 43210"
             value={phone}
-            onChange={(e) => setPhone(e.target.value)}
+            onChange={(val, countryCode) => {
+              setPhone(val);
+              if (countryCode) setSelectedCountry(countryCode);
+              if (errors.phone) {
+                setErrors((prev) => {
+                  const copy = { ...prev };
+                  delete copy.phone;
+                  return copy;
+                });
+              }
+            }}
+            defaultCountry={selectedCountry}
             error={errors.phone}
             required
           />

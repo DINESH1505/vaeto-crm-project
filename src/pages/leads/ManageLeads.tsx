@@ -21,7 +21,7 @@ export default function ManageLeads() {
   const initialQuery = params.get('q') || '';
   const initialStatus = params.get('status') || 'All';
 
-  const { leads, followUps, deleteLeads, users } = useData();
+  const { leads, followUps, deleteLeads, refreshLeads, users } = useData();
   const { isAdmin, can } = useAuth();
   const toast = useToast();
   const navigate = useNavigate();
@@ -88,18 +88,32 @@ export default function ManageLeads() {
     toast.success('Leads exported as CSV');
   };
 
-  const handleSingleDelete = () => {
+  const handleSingleDelete = async () => {
     if (!leadToDelete) return;
-    deleteLeads([leadToDelete.id]);
-    toast.success(`Lead "${leadToDelete.company}" deleted.`);
-    setLeadToDelete(null);
+    try {
+      await deleteLeads([leadToDelete.id]);
+      await refreshLeads();
+      toast.success(`Lead "${leadToDelete.company}" deleted.`);
+    } catch (err: any) {
+      console.error('Failed to delete lead:', err);
+      toast.error(err?.message || 'Failed to delete lead in database.');
+    } finally {
+      setLeadToDelete(null);
+    }
   };
 
-  const handleBulkDelete = () => {
-    deleteLeads(selectedIds);
-    toast.success(`${selectedIds.length} leads deleted.`);
-    setSelectedIds([]);
-    setBulkDeleteConfirm(false);
+  const handleBulkDelete = async () => {
+    try {
+      await deleteLeads(selectedIds);
+      await refreshLeads();
+      toast.success(`${selectedIds.length} leads deleted.`);
+      setSelectedIds([]);
+    } catch (err: any) {
+      console.error('Failed to delete leads:', err);
+      toast.error(err?.message || 'Failed to delete leads in database.');
+    } finally {
+      setBulkDeleteConfirm(false);
+    }
   };
 
   return (

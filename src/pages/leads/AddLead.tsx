@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { LeadForm } from '../../components/leads/LeadForm';
@@ -6,14 +7,24 @@ import { useToast } from '../../context/ToastContext';
 import { LeadInput, NextFollowUpInput } from '../../context/DataContext';
 
 export default function AddLead() {
-  const { addLead } = useData();
+  const { addLead, refreshLeads } = useData();
   const toast = useToast();
   const navigate = useNavigate();
+  const [loading, setLoading] = useState(false);
 
-  const handleCreate = (input: LeadInput, nextFollowUp?: NextFollowUpInput) => {
-    const newLead = addLead(input, nextFollowUp);
-    toast.success(`Lead "${newLead.company}" created successfully!`);
-    navigate(`/leads/${newLead.id}`);
+  const handleCreate = async (input: LeadInput, nextFollowUp?: NextFollowUpInput) => {
+    try {
+      setLoading(true);
+      const newLead = await addLead(input, nextFollowUp);
+      await refreshLeads();
+      toast.success(`Lead "${newLead.company}" created successfully!`);
+      navigate(`/leads/${newLead.id}`);
+    } catch (err: any) {
+      console.error('Failed to create lead in database:', err);
+      toast.error(err?.message || 'Failed to create lead in database.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -32,7 +43,7 @@ export default function AddLead() {
         </div>
       </div>
 
-      <LeadForm onSubmit={handleCreate} submitLabel="Create Lead" />
+      <LeadForm onSubmit={handleCreate} submitLabel="Create Lead" loading={loading} />
     </div>
   );
 }
