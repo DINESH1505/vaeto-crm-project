@@ -1,0 +1,27 @@
+# Local environment variables and secrets
+.env
+.env.*
+!.env.example
+application-local.properties
+application-secret.properties
+
+# Build artifacts
+target/
+*.class
+
+# Version control and IDE metadata
+.git/
+.gitignore
+.idea/
+.vscode/
+
+# Logs and OS files
+*.log
+.DS_Store
+Thumbs.db
+
+# Database dumps and backups
+*.sql
+*.sql.gz
+*.dump
+*.bak
