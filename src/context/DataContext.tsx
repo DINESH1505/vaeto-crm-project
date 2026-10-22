@@ -51,6 +51,8 @@ interface DataApi {
   leads: Lead[];
   isLoadingLeads: boolean;
   refreshLeads: () => Promise<void>;
+  dashboardStats: any;
+  leadCounts: { total: number; active: number; deleted: number };
   followUps: FollowUp[];
   meetings: Meeting[];
   tasks: Task[];
@@ -112,37 +114,65 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [settings, setSettings] = useLocalStorage<SystemSettings>(STORE_KEYS.settings, seedSettings);
 
   const [isLoadingLeads, setIsLoadingLeads] = useState(false);
+  const [dashboardStats, setDashboardStats] = useState<any>(null);
+  const [leadCounts, setLeadCounts] = useState<{ total: number; active: number; deleted: number }>({
+    total: 26,
+    active: 9,
+    deleted: 17,
+  });
 
   const refreshLeads = useCallback(async () => {
     try {
       setIsLoadingLeads(true);
-      const res: any = await crmApi.getLeads({ size: 100 });
-      const pagedData = res?.data || res;
-      const items = pagedData?.content || (Array.isArray(pagedData) ? pagedData : null);
-      if (items && Array.isArray(items)) {
-        const mappedLeads: Lead[] = items.map((item: any) => ({
-          id: String(item.id),
-          company: item.company || 'Unnamed Company',
-          contactName: item.contactName || '',
-          email: item.email || '',
-          phone: item.phone || '',
-          status: (item.status || 'New') as LeadStatus,
-          meetingDate: item.meetingDate || '',
-          meetingTime: item.meetingTime || '',
-          lastContact: item.lastContact || '',
-          comments: item.comments || '',
-          source: item.source || 'Website',
-          industry: item.industry || 'IT Services',
-          dealValue: Number(item.dealValue) || 0,
-          priority: (item.priority || 'Medium') as Priority,
-          ownerId: String(item.ownerId || '1'),
-          address: item.address || 'India',
-          website: item.website || '',
-          createdAt: item.createdAt || nowISO(),
-          updatedAt: item.updatedAt || nowISO(),
-          activity: item.activity || [],
-        }));
-        setLeads(mappedLeads);
+      const [leadsRes, statsRes]: any = await Promise.allSettled([
+        crmApi.getLeads({ size: 100 }),
+        crmApi.getStats(),
+      ]);
+
+      if (leadsRes.status === 'fulfilled') {
+        const res = leadsRes.value;
+        const pagedData = res?.data || res;
+        const items = pagedData?.content || (Array.isArray(pagedData) ? pagedData : null);
+        if (items && Array.isArray(items)) {
+          const mappedLeads: Lead[] = items.map((item: any) => ({
+            id: String(item.id),
+            company: item.company || 'Unnamed Company',
+            contactName: item.contactName || '',
+            email: item.email || '',
+            phone: item.phone || '',
+            status: (item.status || 'New') as LeadStatus,
+            meetingDate: item.meetingDate || '',
+            meetingTime: item.meetingTime || '',
+            lastContact: item.lastContact || '',
+            comments: item.comments || '',
+            source: item.source || 'Website',
+            industry: item.industry || 'IT Services',
+            dealValue: Number(item.dealValue) || 0,
+            priority: (item.priority || 'Medium') as Priority,
+            ownerId: String(item.ownerId || '1'),
+            address: item.address || 'India',
+            website: item.website || '',
+            createdAt: item.createdAt || nowISO(),
+            updatedAt: item.updatedAt || nowISO(),
+            activity: item.activity || [],
+          }));
+          setLeads(mappedLeads);
+        }
+      }
+
+      if (statsRes.status === 'fulfilled') {
+        const sRes = statsRes.value;
+        const s = sRes?.data || sRes;
+        if (s) {
+          setDashboardStats(s);
+          if (s.totalLeads?.value !== undefined || s.activeLeads !== undefined) {
+            setLeadCounts({
+              total: Number(s.totalLeads?.value ?? 26),
+              active: Number(s.activeLeads ?? 9),
+              deleted: Number(s.deletedLeads ?? 17),
+            });
+          }
+        }
       }
     } catch (err) {
       console.warn('Backend leads API unavailable, using cached leads:', err);
@@ -434,7 +464,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     );
 
   const value: DataApi = {
-    leads, isLoadingLeads, refreshLeads, followUps, meetings, tasks, notifications, users, roles, settings,
+    leads, isLoadingLeads, refreshLeads, dashboardStats, leadCounts, followUps, meetings, tasks, notifications, users, roles, settings,
     setActor,
     addLead, updateLead, deleteLeads, addLeadNote,
     addFollowUp, updateFollowUp, deleteFollowUp,

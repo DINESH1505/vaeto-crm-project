@@ -6,11 +6,12 @@ import { Line, LineChart, ResponsiveContainer } from 'recharts';
 interface StatCardProps {
   title: string;
   value: number;
-  trend: number;
+  trend: number | string;
   spark: number[];
   icon: ReactNode;
   iconBg?: string;
   lineColor?: string;
+  subInfo?: ReactNode;
 }
 
 export function StatCard({
@@ -21,6 +22,7 @@ export function StatCard({
   icon,
   iconBg = 'bg-brand-50 text-brand-600 dark:bg-brand-500/15 dark:text-brand-300',
   lineColor = '#8b5cf6',
+  subInfo,
 }: StatCardProps) {
   const chartData = spark.map((val, idx) => ({ idx, val }));
 
@@ -40,9 +42,14 @@ export function StatCard({
           </span>
           <div className="mt-1 flex items-center gap-1 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
             <ArrowUpRight className="h-3 w-3" />
-            <span>{trend >= 0 ? `+${trend}%` : `${trend}%`}</span>
+            <span>{typeof trend === 'number' ? (trend >= 0 ? `+${trend}%` : `${trend}%`) : trend}</span>
             <span className="text-muted font-normal">vs last week</span>
           </div>
+          {subInfo && (
+            <div className="mt-1 text-[11px] font-medium text-muted">
+              {subInfo}
+            </div>
+          )}
         </div>
 
         {/* Mini sparkline chart matching reference */}

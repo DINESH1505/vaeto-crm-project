@@ -18,6 +18,12 @@ public interface LeadRepository extends JpaRepository<Lead, Long> {
     @Query("SELECT COUNT(l) FROM Lead l WHERE (l.isDeleted IS NULL OR l.isDeleted = false)")
     long countActive();
 
+    @Query("SELECT COUNT(l) FROM Lead l WHERE l.isDeleted = true")
+    long countDeleted();
+
+    @Query("SELECT COUNT(l) FROM Lead l")
+    long countTotal();
+
     @Query("SELECT l FROM Lead l WHERE " +
            "(:includeDeleted = true OR l.isDeleted IS NULL OR l.isDeleted = false) AND " +
            "(:ownerId IS NULL OR l.assignedTo = :ownerId OR l.createdBy = :ownerId) AND " +

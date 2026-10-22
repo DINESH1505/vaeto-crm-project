@@ -29,6 +29,8 @@ public class DashboardService {
 
     public DashboardStatsDto getDashboardStats() {
         long totalLeadsCount = leadRepository.count();
+        long activeLeadsCount = leadRepository.countActive();
+        long deletedLeadsCount = leadRepository.countDeleted();
         long pendingFollowUps = followUpRepository.countByStatus("Pending");
         long completedMeetingsCount = meetingRepository.countByStatus("Completed");
 
@@ -36,7 +38,7 @@ public class DashboardService {
         long todayMeetingsCount = meetingRepository.countByDate(today);
 
         // Approximate total contacts based on unique leads
-        long totalContacts = Math.max(0, totalLeadsCount - 2);
+        long totalContacts = Math.max(0, activeLeadsCount > 0 ? activeLeadsCount : totalLeadsCount - 2);
 
         DashboardStatsDto.Metric leadsMetric = new DashboardStatsDto.Metric(
                 totalLeadsCount, "+50% vs last week", Arrays.asList(18, 20, 21, 23, (int) totalLeadsCount)
@@ -58,13 +60,16 @@ public class DashboardService {
                 completedMeetingsCount, "+83% vs last week", Arrays.asList(6, 7, 8, 9, (int) completedMeetingsCount)
         );
 
-        return new DashboardStatsDto(
+        DashboardStatsDto dto = new DashboardStatsDto(
                 leadsMetric,
                 contactsMetric,
                 meetingsMetric,
                 followUpsMetric,
                 completedMeetingsMetric
         );
+        dto.setActiveLeads(activeLeadsCount);
+        dto.setDeletedLeads(deletedLeadsCount);
+        return dto;
     }
 
     public LeadStatusAggregateDto getLeadStatusAggregate() {

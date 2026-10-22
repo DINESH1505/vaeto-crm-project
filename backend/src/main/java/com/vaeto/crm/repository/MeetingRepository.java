@@ -13,15 +13,17 @@ public interface MeetingRepository extends JpaRepository<Meeting, String> {
 
     List<Meeting> findByOwnerId(String ownerId);
 
-    long countByStatus(String status);
+    @Query(value = "SELECT COUNT(*) FROM meetings WHERE LOWER(status) = LOWER(:status)", nativeQuery = true)
+    long countByStatus(@Param("status") String status);
 
-    long countByDate(String date);
+    @Query(value = "SELECT COUNT(*) FROM meetings WHERE meeting_date = :date", nativeQuery = true)
+    long countByDate(@Param("date") String date);
 
-    @Query("SELECT m FROM Meeting m WHERE " +
-           "(:ownerId IS NULL OR m.ownerId = :ownerId) AND " +
-           "(:startDate IS NULL OR m.date >= :startDate) AND " +
-           "(:endDate IS NULL OR m.date <= :endDate) " +
-           "ORDER BY m.date ASC, m.time ASC")
+    @Query(value = "SELECT * FROM meetings WHERE " +
+           "(:ownerId IS NULL OR created_by = :ownerId) AND " +
+           "(:startDate IS NULL OR meeting_date >= :startDate) AND " +
+           "(:endDate IS NULL OR meeting_date <= :endDate) " +
+           "ORDER BY meeting_date ASC, start_time ASC", nativeQuery = true)
     List<Meeting> findByDateRange(
             @Param("ownerId") String ownerId,
             @Param("startDate") String startDate,

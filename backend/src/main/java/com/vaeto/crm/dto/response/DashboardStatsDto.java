@@ -48,6 +48,8 @@ public class DashboardStatsDto {
     private Metric todaysMeetings;
     private Metric followUps;
     private Metric completedMeetings;
+    private long activeLeads;
+    private long deletedLeads;
 
     public DashboardStatsDto() {
     }
@@ -58,6 +60,22 @@ public class DashboardStatsDto {
         this.todaysMeetings = todaysMeetings;
         this.followUps = followUps;
         this.completedMeetings = completedMeetings;
+    }
+
+    public long getActiveLeads() {
+        return activeLeads;
+    }
+
+    public void setActiveLeads(long activeLeads) {
+        this.activeLeads = activeLeads;
+    }
+
+    public long getDeletedLeads() {
+        return deletedLeads;
+    }
+
+    public void setDeletedLeads(long deletedLeads) {
+        this.deletedLeads = deletedLeads;
     }
 
     public Metric getTotalLeads() {

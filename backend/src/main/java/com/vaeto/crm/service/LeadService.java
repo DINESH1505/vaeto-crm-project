@@ -3,6 +3,7 @@ package com.vaeto.crm.service;
 import com.vaeto.crm.dto.request.LeadRequest;
 import com.vaeto.crm.dto.response.LeadDto;
 import com.vaeto.crm.dto.response.PagedResponse;
+import com.vaeto.crm.exception.BadRequestException;
 import com.vaeto.crm.exception.ResourceNotFoundException;
 import com.vaeto.crm.model.Lead;
 import com.vaeto.crm.repository.LeadRepository;
@@ -71,6 +72,10 @@ public class LeadService {
             Long numericId = Long.parseLong(id);
             Lead lead = leadRepository.findById(numericId)
                     .orElseThrow(() -> new ResourceNotFoundException("Lead not found with id: " + id));
+
+            if (Boolean.TRUE.equals(lead.getIsDeleted())) {
+                throw new BadRequestException("Deleted leads cannot be edited as active leads.");
+            }
             return mapToDto(lead);
         } catch (NumberFormatException e) {
             throw new ResourceNotFoundException("Invalid lead id: " + id);
@@ -137,6 +142,10 @@ public class LeadService {
             Lead lead = leadRepository.findById(numericId)
                     .orElseThrow(() -> new ResourceNotFoundException("Lead not found with id: " + id));
 
+            if (Boolean.TRUE.equals(lead.getIsDeleted())) {
+                throw new BadRequestException("Deleted leads cannot be edited as active leads.");
+            }
+
             if (request.getCompany() != null && !request.getCompany().isBlank()) lead.setCompany(request.getCompany());
             if (request.getContactName() != null && !request.getContactName().isBlank()) lead.setContactName(request.getContactName());
             if (request.getEmail() != null) lead.setEmail(request.getEmail());
@@ -177,7 +186,9 @@ public class LeadService {
             Lead lead = leadRepository.findById(numericId)
                     .orElseThrow(() -> new ResourceNotFoundException("Lead not found with id: " + id));
 
-            // Soft-delete to preserve existing database records
+            if (Boolean.TRUE.equals(lead.getIsDeleted())) {
+                throw new BadRequestException("Lead is already deleted: " + id);
+            }
             lead.setIsDeleted(true);
             lead.setDeletedAt(LocalDateTime.now());
             Long deletedByNum = 1L;

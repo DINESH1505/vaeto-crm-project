@@ -11,7 +11,7 @@ import {
   UserRound,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { Avatar, Dropdown, MenuItem } from '../ui';
+import { Dropdown, MenuItem } from '../ui';
 import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
 import { useTheme } from '../../context/ThemeContext';
@@ -38,18 +38,19 @@ function DatePill() {
         <button
           onClick={toggle}
           aria-expanded={open}
-          className="hidden h-12 items-center gap-3 rounded-2xl border border-line/80 bg-surface pl-2 pr-3 shadow-card transition hover:border-brand-300 xl:flex"
+          aria-label="Today's agenda"
+          className="flex items-center gap-2.5 rounded-xl py-1 px-1.5 transition hover:opacity-85 focus:outline-none"
         >
-          <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-brand-gradient text-white">
+          <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-brand-gradient text-white shadow-sm">
             <CalendarDays className="h-4 w-4" />
           </span>
-          <span className="text-left leading-tight">
+          <span className="hidden text-left leading-tight sm:block">
             <span className="block text-sm font-bold text-ink">{formatDate(toISODate(now), 'DD MMM YYYY')}</span>
             <span className="block text-[11px] text-muted">
               {weekdayName(now)}, {formatTime(`${now.getHours()}:${now.getMinutes()}`)}
             </span>
           </span>
-          <ChevronDown className={cn('ml-2 h-4 w-4 text-muted transition', open && 'rotate-180')} />
+          <ChevronDown className={cn('h-4 w-4 text-muted transition-transform duration-200', open && 'rotate-180')} />
         </button>
       )}
     >
@@ -87,8 +88,8 @@ function DatePill() {
 function ThemeMenu() {
   const { theme, resolved, setTheme } = useTheme();
   const options: { value: ThemePreference; label: string; icon: JSX.Element }[] = [
-    { value: 'light', label: 'Light', icon: <Sun /> },
-    { value: 'dark', label: 'Dark', icon: <Moon /> },
+    { value: 'light', label: 'Light', icon: <Sun className="h-4 w-4" /> },
+    { value: 'dark', label: 'Dark', icon: <Moon className="h-4 w-4" /> },
   ];
   return (
     <Dropdown
@@ -98,10 +99,11 @@ function ThemeMenu() {
           onClick={toggle}
           aria-expanded={open}
           aria-label="Change theme"
-          className="hidden h-12 items-center gap-2 rounded-2xl border border-line/80 bg-surface px-3.5 text-ink shadow-card transition hover:border-brand-300 sm:flex"
+          className="flex items-center gap-2 rounded-xl py-1 px-1.5 text-ink transition hover:opacity-85 focus:outline-none"
         >
           {resolved === 'dark' ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
-          <ChevronDown className={cn('h-4 w-4 text-muted transition', open && 'rotate-180')} />
+          <span className="h-4 w-px bg-slate-300 dark:bg-slate-700" aria-hidden="true" />
+          <ChevronDown className={cn('h-4 w-4 text-muted transition-transform duration-200', open && 'rotate-180')} />
         </button>
       )}
     >
@@ -132,11 +134,13 @@ function ProfileMenu() {
           onClick={toggle}
           aria-expanded={open}
           aria-label="Open profile menu"
-          className="flex h-11 items-center gap-2.5 rounded-2xl border border-line/80 bg-surface pl-1.5 pr-2 shadow-card transition hover:border-brand-300 sm:h-12 sm:pr-3"
+          className="flex items-center gap-2.5 rounded-xl py-1 px-1.5 transition hover:opacity-85 focus:outline-none"
         >
-          <Avatar name={user.name} size="sm" className="sm:h-9 sm:w-9" />
-          <span className="hidden max-w-[110px] truncate text-sm font-bold text-ink md:block">{user.name}</span>
-          <ChevronDown className={cn('hidden h-4 w-4 text-muted transition sm:block', open && 'rotate-180')} />
+          <span className="flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-full bg-pink-500 font-bold text-white text-xs sm:text-sm shadow-sm">
+            U
+          </span>
+          <span className="hidden text-sm font-bold text-ink sm:block">User</span>
+          <ChevronDown className={cn('h-4 w-4 text-muted transition-transform duration-200', open && 'rotate-180')} />
         </button>
       )}
     >
@@ -173,7 +177,7 @@ export function Header({ onMenu }: { onMenu: () => void }) {
         >
           <Menu className="h-5 w-5" />
         </button>
-        <div className="ml-auto flex items-center gap-2 sm:gap-3">
+        <div className="ml-auto flex items-center gap-3 sm:gap-4">
           <DatePill />
           <ThemeMenu />
           <ProfileMenu />

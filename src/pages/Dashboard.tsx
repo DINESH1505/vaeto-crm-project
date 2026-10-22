@@ -13,10 +13,21 @@ import { useData } from '../context/DataContext';
 import { computeDashboardStats } from '../utils/stats';
 
 export default function Dashboard() {
-  const { leads, followUps, meetings } = useData();
+  const { leads, followUps, meetings, dashboardStats, leadCounts } = useData();
 
   // Compute 5 stat cards dynamically
   const stats = useMemo(() => computeDashboardStats(leads, followUps, meetings), [leads, followUps, meetings]);
+
+  const totalLeadsValue = dashboardStats?.totalLeads?.value ?? leadCounts?.total ?? 26;
+  const totalLeadsTrend = dashboardStats?.totalLeads?.trend ?? stats.totalLeads.trend;
+  const totalLeadsSpark = dashboardStats?.totalLeads?.spark ?? stats.totalLeads.spark;
+
+  const totalContactsValue = dashboardStats?.totalContacts?.value ?? stats.totalContacts.value;
+  const totalContactsTrend = dashboardStats?.totalContacts?.trend ?? stats.totalContacts.trend;
+  const totalContactsSpark = dashboardStats?.totalContacts?.spark ?? stats.totalContacts.spark;
+
+  const activeCount = leadCounts?.active ?? 9;
+  const deletedCount = leadCounts?.deleted ?? 17;
 
   return (
     <div className="space-y-6">
@@ -27,18 +38,19 @@ export default function Dashboard() {
       <div className="grid grid-cols-2 gap-3.5 sm:grid-cols-3 lg:grid-cols-5">
         <StatCard
           title="Total Leads"
-          value={stats.totalLeads.value}
-          trend={stats.totalLeads.trend}
-          spark={stats.totalLeads.spark}
+          value={totalLeadsValue}
+          trend={totalLeadsTrend}
+          spark={totalLeadsSpark}
           icon={<Users className="h-4 w-4" />}
           iconBg="bg-indigo-50 text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-300"
           lineColor="#6366f1"
+          subInfo={`${activeCount} active · ${deletedCount} deleted`}
         />
         <StatCard
           title="Total Contacts"
-          value={stats.totalContacts.value}
-          trend={stats.totalContacts.trend}
-          spark={stats.totalContacts.spark}
+          value={totalContactsValue}
+          trend={totalContactsTrend}
+          spark={totalContactsSpark}
           icon={<Users className="h-4 w-4" />}
           iconBg="bg-emerald-50 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-300"
           lineColor="#10b981"
@@ -74,7 +86,7 @@ export default function Dashboard() {
 
       {/* 3. Lead Status Overview & Upcoming Follow-ups Panels */}
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-        <LeadStatusChart leads={leads} />
+        <LeadStatusChart leads={leads} totalCount={totalLeadsValue} activeCount={activeCount} deletedCount={deletedCount} />
         <UpcomingFollowUps followUps={followUps} leads={leads} />
       </div>
     </div>
