@@ -4,10 +4,14 @@
  * Automatically injects JWT Bearer token into Authorization header when logged in.
  */
 
-const API_BASE_URL = (
+const rawBaseUrl = (
   import.meta.env.VITE_API_BASE_URL ||
-  (import.meta.env.DEV ? 'http://localhost:8080/api/v1' : 'https://vaeto-crm-dashboard-production-e935.up.railway.app/api/v1')
-).replace(/\/+$/, '');
+  (import.meta.env.DEV ? 'http://localhost:8080/api/v1' : 'https://vaeto-crm-project.onrender.com/api/v1')
+).trim().replace(/\/+$/, '');
+
+const API_BASE_URL = rawBaseUrl.endsWith('/api/v1')
+  ? rawBaseUrl
+  : `${rawBaseUrl}/api/v1`;
 
 export class ApiError extends Error {
   status: number;

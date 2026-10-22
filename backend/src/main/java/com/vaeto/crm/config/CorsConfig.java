@@ -7,6 +7,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -25,13 +26,23 @@ public class CorsConfig {
                 .map(String::trim)
                 .filter(s -> !s.isEmpty())
                 .collect(Collectors.toList());
-        configuration.setAllowedOrigins(origins);
-        configuration.setAllowedOriginPatterns(Arrays.asList(
+
+        List<String> originPatterns = new ArrayList<>(Arrays.asList(
                 "http://localhost:[*]",
                 "http://127.0.0.1:[*]",
+                "https://*.vercel.app",
+                "https://vercel.app",
                 "https://*.onrender.com",
                 "https://*.railway.app"
         ));
+
+        for (String origin : origins) {
+            if (!originPatterns.contains(origin)) {
+                originPatterns.add(origin);
+            }
+        }
+
+        configuration.setAllowedOriginPatterns(originPatterns);
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "Accept", "X-Requested-With", "Origin"));
         configuration.setExposedHeaders(Arrays.asList("Authorization", "Content-Disposition"));

@@ -143,4 +143,7 @@ export const crmApi = {
   // Admin
   getUsers: () => apiRequest<any[]>('/admin/users'),
   getAuditLogs: () => apiRequest<any[]>('/admin/audit-logs'),
+
+  // Reports
+  getReports: () => apiRequest<any>('/reports'),
 };
