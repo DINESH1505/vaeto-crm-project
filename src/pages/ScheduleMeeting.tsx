@@ -1,50 +1,69 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Calendar } from 'lucide-react';
 import { Button, Input, Select, Textarea } from '../components/ui';
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
 import { useToast } from '../context/ToastContext';
 import { MeetingMode } from '../types';
+import { todayISO } from '../utils/date';
 
 export default function ScheduleMeeting() {
   const { leads, addMeeting } = useData();
   const { user } = useAuth();
   const toast = useToast();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const queryLeadId = searchParams.get('leadId');
 
-  const [leadId, setLeadId] = useState(leads[0]?.id || '');
+  const [leadId, setLeadId] = useState(queryLeadId || leads[0]?.id || '');
   const [title, setTitle] = useState('');
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(todayISO());
   const [time, setTime] = useState('11:00');
   const [durationMins, setDurationMins] = useState('30');
   const [mode, setMode] = useState<MeetingMode>('Online');
   const [location, setLocation] = useState('Google Meet');
   const [attendees, setAttendees] = useState('');
   const [notes, setNotes] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (queryLeadId) {
+      setLeadId(queryLeadId);
+    } else if (!leadId && leads.length > 0) {
+      setLeadId(leads[0].id);
+    }
+  }, [leads, leadId, queryLeadId]);
 
   const leadOptions = leads.map((l) => ({ value: l.id, label: `${l.company} (${l.contactName})` }));
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim() || !date) return;
+    if (isSubmitting || !title.trim() || !date) return;
 
-    addMeeting({
-      leadId,
-      title: title.trim(),
-      date,
-      time,
-      durationMins: parseInt(durationMins, 10) || 30,
-      mode,
-      location,
-      attendees,
-      notes,
-      status: 'Scheduled',
-      ownerId: user?.id || 'u_dinesh',
-    });
+    try {
+      setIsSubmitting(true);
+      const chosenLeadId = leadId || leads[0]?.id || '';
+      await addMeeting({
+        leadId: chosenLeadId,
+        title: title.trim(),
+        date,
+        time,
+        durationMins: parseInt(durationMins, 10) || 30,
+        mode,
+        location,
+        attendees,
+        notes,
+        status: 'Scheduled',
+        ownerId: user?.id || '1',
+      });
 
-    toast.success('Meeting scheduled and added to calendar');
-    navigate('/calendar');
+      toast.success('Meeting scheduled and added to calendar');
+      navigate('/calendar');
+    } catch (err) {
+      toast.error('Failed to schedule meeting');
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -150,9 +169,10 @@ export default function ScheduleMeeting() {
             <Button
               variant="primary"
               type="submit"
+              disabled={isSubmitting}
               leftIcon={<Calendar className="h-4 w-4" />}
             >
-              Confirm Schedule
+              {isSubmitting ? 'Scheduling...' : 'Confirm Schedule'}
             </Button>
           </div>
         </form>

@@ -9,12 +9,13 @@ import { useState } from 'react';
 
 export default function EditLead() {
   const { id } = useParams<{ id: string }>();
-  const { leads, updateLead, refreshLeads } = useData();
+  const { leads, followUps, updateLead, refreshLeads } = useData();
   const toast = useToast();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
 
   const lead = leads.find((l) => l.id === id);
+  const relatedFollowUp = followUps.find((f) => String(f.leadId) === String(id) && f.status === 'Pending');
 
   if (!lead) {
     return (
@@ -63,7 +64,7 @@ export default function EditLead() {
         </div>
       </div>
 
-      <LeadForm initialLead={lead} onSubmit={handleUpdate} submitLabel="Save Changes" loading={loading} />
+      <LeadForm initialLead={lead} initialFollowUp={relatedFollowUp} onSubmit={handleUpdate} submitLabel="Save Changes" loading={loading} />
     </div>
   );
 }

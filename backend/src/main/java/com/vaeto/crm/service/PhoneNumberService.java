@@ -35,11 +35,12 @@ public class PhoneNumberService {
 
     /**
      * Validates and normalizes phone number to standard E.164 format (e.g., +919876543210).
-     * Throws BadRequestException if invalid.
+     * Throws BadRequestException if invalid format.
+     * Returns null if rawNumber is null or empty (phone is optional).
      */
     public String validateAndNormalize(String rawNumber, String defaultRegion) {
         if (rawNumber == null || rawNumber.trim().isEmpty()) {
-            throw new BadRequestException("Phone number is required");
+            return null;
         }
         String trimmed = rawNumber.trim();
         if (trimmed.matches(".*[a-zA-Z].*")) {

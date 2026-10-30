@@ -34,7 +34,7 @@ export function AppLayout() {
             {settings.maintenanceBanner}
           </div>
         )}
-        <main className="px-4 pb-10 pt-2 sm:px-6 lg:px-7">
+        <main className="px-4 pb-10 pt-5 sm:px-6 sm:pt-6 lg:px-7">
           <ErrorBoundary key={pathname}>
             <Suspense fallback={<PageLoader />}>
               <Outlet />

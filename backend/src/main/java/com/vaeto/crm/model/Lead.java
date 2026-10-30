@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
+import java.util.Locale;
 
 @Entity
 @Table(name = "leads")
@@ -20,11 +22,20 @@ public class Lead {
     @Column(name = "person_name", nullable = false, length = 150)
     private String contactName;
 
+    @Column(name = "title", length = 150)
+    private String title;
+
     @Column(name = "email", length = 255)
     private String email;
 
     @Column(name = "contact", length = 50)
     private String phone;
+
+    @Column(name = "corporate_phone", length = 50)
+    private String corporatePhone;
+
+    @Column(name = "whatsapp_number", length = 50)
+    private String whatsappNumber;
 
     @Column(name = "meeting_status", length = 50)
     private String status = "New";
@@ -122,6 +133,30 @@ public class Lead {
         this.contactName = contactName;
     }
 
+    public String getTitle() {
+        return title;
+    }
+
+    public void setTitle(String title) {
+        this.title = title;
+    }
+
+    public String getCorporatePhone() {
+        return corporatePhone;
+    }
+
+    public void setCorporatePhone(String corporatePhone) {
+        this.corporatePhone = corporatePhone;
+    }
+
+    public String getWhatsappNumber() {
+        return whatsappNumber;
+    }
+
+    public void setWhatsappNumber(String whatsappNumber) {
+        this.whatsappNumber = whatsappNumber;
+    }
+
     public String getEmail() {
         return email;
     }
@@ -143,7 +178,11 @@ public class Lead {
     }
 
     public void setStatus(String status) {
-        this.status = status;
+        if (status == null || status.trim().isEmpty()) {
+            this.status = "New";
+        } else {
+            this.status = status.trim();
+        }
     }
 
     public LocalDate getConnectedOn() {
@@ -154,25 +193,23 @@ public class Lead {
         this.connectedOn = connectedOn;
     }
 
+    public String getCompletedOn() {
+        return connectedOn != null ? connectedOn.toString() : null;
+    }
+
+    public void setCompletedOn(String completedOn) {
+        this.connectedOn = parseDateSafe(completedOn);
+    }
+
+    @Transient
+    private LocalDate meetingDate;
+
     public String getMeetingDate() {
-        if (connectedOn != null) {
-            return connectedOn.toString();
-        }
-        if (nextFollowUpDate != null) {
-            return nextFollowUpDate.toString();
-        }
-        return null;
+        return meetingDate != null ? meetingDate.toString() : null;
     }
 
     public void setMeetingDate(String meetingDate) {
-        if (meetingDate != null && !meetingDate.isBlank()) {
-            try {
-                String clean = meetingDate.trim();
-                if (clean.length() >= 10) {
-                    this.connectedOn = LocalDate.parse(clean.substring(0, 10));
-                }
-            } catch (Exception ignored) {}
-        }
+        this.meetingDate = parseDateSafe(meetingDate);
     }
 
     public String getMeetingTime() {
@@ -180,13 +217,7 @@ public class Lead {
     }
 
     public void setMeetingTime(String meetingTime) {
-        if (meetingTime != null && !meetingTime.isBlank()) {
-            try {
-                String clean = meetingTime.trim();
-                if (clean.length() == 5) clean += ":00";
-                this.meetingTime = LocalTime.parse(clean);
-            } catch (Exception ignored) {}
-        }
+        this.meetingTime = parseTimeSafe(meetingTime);
     }
 
     public String getLastContact() {
@@ -194,14 +225,50 @@ public class Lead {
     }
 
     public void setLastContact(String lastContact) {
-        if (lastContact != null && !lastContact.isBlank()) {
+        this.lastContactDate = parseDateSafe(lastContact);
+    }
+
+    public static LocalDate parseDateSafe(String raw) {
+        if (raw == null || raw.isBlank()) return null;
+        String s = raw.trim();
+        if (s.matches("^\\d{4}-\\d{2}-\\d{2}.*")) {
+            try { return LocalDate.parse(s.substring(0, 10)); } catch (Exception ignored) {}
+        }
+        if (s.matches("^\\d{1,2}[-/]\\d{1,2}[-/]\\d{4}")) {
             try {
-                String clean = lastContact.trim();
-                if (clean.length() >= 10) {
-                    this.lastContactDate = LocalDate.parse(clean.substring(0, 10));
-                }
+                String[] parts = s.split("[-/]");
+                int d = Integer.parseInt(parts[0]);
+                int m = Integer.parseInt(parts[1]);
+                int y = Integer.parseInt(parts[2]);
+                return LocalDate.of(y, m, d);
             } catch (Exception ignored) {}
         }
+        for (String pattern : new String[]{"dd MMM yyyy", "dd-MMM-yyyy", "d MMM yyyy", "d-MMM-yyyy", "MM/dd/yyyy", "M/d/yyyy"}) {
+            try {
+                return LocalDate.parse(s, DateTimeFormatter.ofPattern(pattern, Locale.ENGLISH));
+            } catch (Exception ignored) {}
+        }
+        try {
+            return LocalDate.parse(s);
+        } catch (Exception ignored) {}
+        return null;
+    }
+
+    public static LocalTime parseTimeSafe(String raw) {
+        if (raw == null || raw.isBlank()) return null;
+        String s = raw.trim();
+        try {
+            if (s.toUpperCase().contains("AM") || s.toUpperCase().contains("PM")) {
+                for (String pattern : new String[]{"h:mm a", "hh:mm a", "h:mm:ss a", "hh:mm:ss a"}) {
+                    try {
+                        return LocalTime.parse(s.toUpperCase(), DateTimeFormatter.ofPattern(pattern, Locale.ENGLISH));
+                    } catch (Exception ignored) {}
+                }
+            }
+            if (s.length() == 5) s += ":00";
+            return LocalTime.parse(s);
+        } catch (Exception ignored) {}
+        return null;
     }
 
     public LocalDate getLastContactDate() {

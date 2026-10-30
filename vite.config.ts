@@ -7,7 +7,7 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 5173,
-    strictPort: true,
+    strictPort: false,
     host: '0.0.0.0',
     allowedHosts: [
       'vaeto-crm-dashboard.onrender.com',

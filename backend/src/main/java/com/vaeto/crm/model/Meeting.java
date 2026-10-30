@@ -1,48 +1,48 @@
 package com.vaeto.crm.model;
 
 import jakarta.persistence.*;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 
 @Entity
 @Table(name = "meetings")
 public class Meeting {
 
     @Id
-    @Column(name = "id", nullable = false, length = 64)
-    private String id;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id")
+    private Long id;
 
-    @Column(name = "lead_id", length = 64)
-    private String leadId;
-
-    @Column(name = "title", nullable = false, length = 200)
+    @Column(name = "title", nullable = false, length = 255)
     private String title;
 
-    @Column(name = "date", length = 50)
-    private String date;
+    @Column(name = "lead_id", nullable = false)
+    private Long leadId;
 
-    @Column(name = "time", length = 50)
-    private String time;
+    @Column(name = "meeting_date", nullable = false)
+    private LocalDate meetingDate;
 
-    @Column(name = "duration_mins")
-    private Integer durationMins = 30;
+    @Column(name = "start_time")
+    private LocalTime startTime;
 
-    @Column(name = "mode", length = 50)
-    private String mode = "Online";
+    @Column(name = "end_time")
+    private LocalTime endTime;
 
-    @Column(name = "location", length = 255)
-    private String location;
+    @Column(name = "meeting_type")
+    private String meetingType = "Online / Video Call";
 
-    @Column(name = "attendees", columnDefinition = "TEXT")
-    private String attendees;
+    @Column(name = "location_link", length = 500)
+    private String locationLink;
+
+    @Column(name = "status", nullable = false)
+    private String status = "Scheduled";
 
     @Column(name = "notes", columnDefinition = "TEXT")
     private String notes;
 
-    @Column(name = "status", length = 50)
-    private String status = "Scheduled";
-
-    @Column(name = "owner_id", length = 64)
-    private String ownerId;
+    @Column(name = "created_by", nullable = false)
+    private Long createdBy = 1L;
 
     @Column(name = "created_at")
     private LocalDateTime createdAt = LocalDateTime.now();
@@ -54,20 +54,12 @@ public class Meeting {
     }
 
     // Getters and Setters
-    public String getId() {
+    public Long getId() {
         return id;
     }
 
-    public void setId(String id) {
+    public void setId(Long id) {
         this.id = id;
-    }
-
-    public String getLeadId() {
-        return leadId;
-    }
-
-    public void setLeadId(String leadId) {
-        this.leadId = leadId;
     }
 
     public String getTitle() {
@@ -78,60 +70,52 @@ public class Meeting {
         this.title = title;
     }
 
-    public String getDate() {
-        return date;
+    public Long getLeadId() {
+        return leadId;
     }
 
-    public void setDate(String date) {
-        this.date = date;
+    public void setLeadId(Long leadId) {
+        this.leadId = leadId;
     }
 
-    public String getTime() {
-        return time;
+    public LocalDate getMeetingDate() {
+        return meetingDate;
     }
 
-    public void setTime(String time) {
-        this.time = time;
+    public void setMeetingDate(LocalDate meetingDate) {
+        this.meetingDate = meetingDate;
     }
 
-    public Integer getDurationMins() {
-        return durationMins;
+    public LocalTime getStartTime() {
+        return startTime;
     }
 
-    public void setDurationMins(Integer durationMins) {
-        this.durationMins = durationMins;
+    public void setStartTime(LocalTime startTime) {
+        this.startTime = startTime;
     }
 
-    public String getMode() {
-        return mode;
+    public LocalTime getEndTime() {
+        return endTime;
     }
 
-    public void setMode(String mode) {
-        this.mode = mode;
+    public void setEndTime(LocalTime endTime) {
+        this.endTime = endTime;
     }
 
-    public String getLocation() {
-        return location;
+    public String getMeetingType() {
+        return meetingType;
     }
 
-    public void setLocation(String location) {
-        this.location = location;
+    public void setMeetingType(String meetingType) {
+        this.meetingType = meetingType;
     }
 
-    public String getAttendees() {
-        return attendees;
+    public String getLocationLink() {
+        return locationLink;
     }
 
-    public void setAttendees(String attendees) {
-        this.attendees = attendees;
-    }
-
-    public String getNotes() {
-        return notes;
-    }
-
-    public void setNotes(String notes) {
-        this.notes = notes;
+    public void setLocationLink(String locationLink) {
+        this.locationLink = locationLink;
     }
 
     public String getStatus() {
@@ -142,12 +126,20 @@ public class Meeting {
         this.status = status;
     }
 
-    public String getOwnerId() {
-        return ownerId;
+    public String getNotes() {
+        return notes;
     }
 
-    public void setOwnerId(String ownerId) {
-        this.ownerId = ownerId;
+    public void setNotes(String notes) {
+        this.notes = notes;
+    }
+
+    public Long getCreatedBy() {
+        return createdBy;
+    }
+
+    public void setCreatedBy(Long createdBy) {
+        this.createdBy = createdBy;
     }
 
     public LocalDateTime getCreatedAt() {

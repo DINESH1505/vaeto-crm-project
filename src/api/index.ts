@@ -1,5 +1,14 @@
 import { apiRequest } from './client';
 
+export interface BulkImportResult {
+  totalDetected: number;
+  importedCount: number;
+  skippedCount: number;
+  failedCount: number;
+  errorMessages: string[];
+  importedLeads: any[];
+}
+
 export interface BackendAuthResponse {
   token: string;
   tokenType: string;
@@ -33,6 +42,7 @@ export const crmApi = {
 
   // Dashboard
   getStats: () => apiRequest<any>('/dashboard/stats'),
+  getDashboardStats: () => apiRequest<any>('/dashboard/stats'),
   getLeadStatus: () => apiRequest<any>('/dashboard/lead-status'),
   getUpcomingFollowUps: () => apiRequest<any[]>('/dashboard/upcoming-followups'),
 
@@ -60,6 +70,21 @@ export const crmApi = {
       method: 'PUT',
       body: JSON.stringify(lead),
     }),
+
+  bulkImportLeads: (data: { skipDuplicates: boolean; leads: any[] }) =>
+    apiRequest<BulkImportResult>('/leads/bulk-import', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  importLeadsFile: (file: File, skipDuplicates: boolean = true) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return apiRequest<BulkImportResult>(`/leads/import?skipDuplicates=${skipDuplicates}`, {
+      method: 'POST',
+      body: formData,
+    });
+  },
 
   deleteLead: (id: string) =>
     apiRequest<void>(`/leads/${id}`, {
@@ -111,6 +136,12 @@ export const crmApi = {
       body: JSON.stringify(followUp),
     }),
 
+  updateFollowUp: (id: string, followUp: any) =>
+    apiRequest<any>(`/follow-ups/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(followUp),
+    }),
+
   completeFollowUp: (id: string) =>
     apiRequest<any>(`/follow-ups/${id}/complete`, {
       method: 'PATCH',
@@ -133,6 +164,22 @@ export const crmApi = {
     apiRequest<any>('/meetings', {
       method: 'POST',
       body: JSON.stringify(meeting),
+    }),
+
+  updateMeeting: (id: string, meeting: any) =>
+    apiRequest<any>(`/meetings/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(meeting),
+    }),
+
+  completeMeeting: (id: string) =>
+    apiRequest<any>(`/meetings/${id}/complete`, {
+      method: 'PATCH',
+    }),
+
+  reopenMeeting: (id: string) =>
+    apiRequest<any>(`/meetings/${id}/reopen`, {
+      method: 'PATCH',
     }),
 
   deleteMeeting: (id: string) =>

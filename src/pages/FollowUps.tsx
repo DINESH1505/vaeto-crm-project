@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { CalendarCheck, Check, Clock, Plus, Trash2 } from 'lucide-react';
 import { Button, Input, Modal, Select } from '../components/ui';
 import { useAuth } from '../context/AuthContext';
@@ -14,6 +14,7 @@ export default function FollowUps() {
 
   const [modalOpen, setModalOpen] = useState(false);
   const [filter, setFilter] = useState<'All' | FollowUpStatus>('Pending');
+  const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
 
   // Form state
   const [leadId, setLeadId] = useState(leads[0]?.id || '');
@@ -23,31 +24,68 @@ export default function FollowUps() {
   const [time, setTime] = useState('11:00');
   const [notes, setNotes] = useState('');
 
+  useEffect(() => {
+    if (!leadId && leads.length > 0) {
+      setLeadId(leads[0].id);
+    }
+  }, [leads, leadId]);
+
   const leadOptions = leads.map((l) => ({ value: l.id, label: `${l.company} (${l.contactName})` }));
 
-  const handleCreate = (e: React.FormEvent) => {
+  const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !date) return;
+    if (actionLoadingId) return;
 
-    addFollowUp({
-      leadId,
-      title: title.trim(),
-      type,
-      date,
-      time,
-      notes: notes.trim(),
-      status: 'Pending',
-      ownerId: user?.id || 'u_dinesh',
-    });
+    setActionLoadingId('new');
+    try {
+      const chosenLeadId = leadId || leads[0]?.id || '';
+      await addFollowUp({
+        leadId: chosenLeadId,
+        title: title.trim(),
+        type,
+        date,
+        time,
+        notes: notes.trim(),
+        status: 'Pending',
+        ownerId: user?.id || '1',
+      });
 
-    toast.success('Follow-up scheduled');
-    setModalOpen(false);
-    setTitle('');
+      toast.success('Follow-up scheduled');
+      setModalOpen(false);
+      setTitle('');
+    } catch {
+      toast.error('Failed to schedule follow-up');
+    } finally {
+      setActionLoadingId(null);
+    }
   };
 
-  const handleMarkDone = (f: FollowUp) => {
-    updateFollowUp(f.id, { status: f.status === 'Done' ? 'Pending' : 'Done' });
-    toast.success(f.status === 'Done' ? 'Marked as Pending' : 'Follow-up marked as Completed');
+  const handleMarkDone = async (f: FollowUp) => {
+    if (actionLoadingId) return;
+    setActionLoadingId(f.id);
+    const nextStatus = f.status === 'Done' ? 'Pending' : 'Done';
+    try {
+      await updateFollowUp(f.id, { status: nextStatus });
+      toast.success(nextStatus === 'Done' ? 'Follow-up marked as Completed' : 'Marked as Pending');
+    } catch {
+      toast.error('Failed to update follow-up status');
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (actionLoadingId) return;
+    setActionLoadingId(id);
+    try {
+      await deleteFollowUp(id);
+      toast.success('Follow-up deleted successfully');
+    } catch {
+      toast.error('Failed to delete follow-up');
+    } finally {
+      setActionLoadingId(null);
+    }
   };
 
   const filtered = followUps.filter((f) => {
@@ -130,6 +168,7 @@ export default function FollowUps() {
                   <Button
                     variant={isDone ? 'outline' : 'secondary'}
                     size="sm"
+                    disabled={actionLoadingId === f.id}
                     onClick={() => handleMarkDone(f)}
                     leftIcon={<Check className="h-3.5 w-3.5" />}
                   >
@@ -137,8 +176,11 @@ export default function FollowUps() {
                   </Button>
                   <button
                     type="button"
-                    onClick={() => deleteFollowUp(f.id)}
-                    className="rounded-lg p-1.5 text-muted hover:bg-rose-50 hover:text-rose-500 transition"
+                    disabled={actionLoadingId === f.id}
+                    onClick={() => handleDelete(f.id)}
+                    className={`rounded-lg p-1.5 text-muted hover:bg-rose-50 hover:text-rose-500 transition ${
+                      actionLoadingId === f.id ? 'opacity-50 cursor-not-allowed' : ''
+                    }`}
                     title="Delete follow-up"
                   >
                     <Trash2 className="h-4 w-4" />
@@ -198,7 +240,7 @@ export default function FollowUps() {
             <Button variant="outline" onClick={() => setModalOpen(false)} type="button">
               Cancel
             </Button>
-            <Button variant="primary" type="submit">
+            <Button variant="primary" type="submit" loading={actionLoadingId === 'new'} disabled={actionLoadingId !== null}>
               Save Follow-up
             </Button>
           </div>

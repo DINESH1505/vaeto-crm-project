@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import { Avatar, Button, Modal, PriorityBadge, StatusBadge } from '../ui';
 import { FollowUp, Lead, User } from '../../types';
-import { formatDate, formatDateTime } from '../../utils/date';
+import { formatDate, formatDateTime, formatTime } from '../../utils/date';
 import { formatCurrency } from '../../utils/helpers';
 
 interface LeadViewModalProps {
@@ -117,6 +117,34 @@ export function LeadViewModal({
                 )}
               </div>
 
+              {lead.corporatePhone && (
+                <div>
+                  <span className="text-muted block text-[11px]">Corporate Phone</span>
+                  <a
+                    href={`tel:${lead.corporatePhone}`}
+                    className="flex items-center gap-1.5 font-medium text-brand-600 hover:underline"
+                  >
+                    <Phone className="h-3.5 w-3.5 shrink-0" />
+                    {lead.corporatePhone}
+                  </a>
+                </div>
+              )}
+
+              {lead.whatsappNumber && (
+                <div>
+                  <span className="text-muted block text-[11px]">What&apos;s App Number</span>
+                  <a
+                    href={`https://wa.me/${lead.whatsappNumber.replace(/[^0-9]/g, '')}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 font-medium text-emerald-600 hover:underline"
+                  >
+                    <Phone className="h-3.5 w-3.5 shrink-0 text-emerald-600" />
+                    {lead.whatsappNumber}
+                  </a>
+                </div>
+              )}
+
               {websiteUrl && (
                 <div>
                   <span className="text-muted block text-[11px]">Website</span>
@@ -207,7 +235,7 @@ export function LeadViewModal({
             <div className="rounded-lg bg-soft/50 p-2.5">
               <span className="text-muted block text-[11px]">Meeting Time</span>
               <span className="font-bold text-ink">
-                {lead.meetingTime || '—'}
+                {lead.meetingTime ? formatTime(lead.meetingTime) : '—'}
               </span>
             </div>
 

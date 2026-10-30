@@ -119,13 +119,18 @@ function ThemeMenu() {
 }
 
 function ProfileMenu() {
-  const { user, role, logout } = useAuth();
+  const { user, role, isAdmin, logout } = useAuth();
   const navigate = useNavigate();
   if (!user) return null;
   const go = (path: string, close: () => void) => {
     close();
     navigate(path);
   };
+
+  const isUserAdmin = isAdmin || !!role?.isAdmin || user.roleId === 'role_admin' || user.email?.toLowerCase().includes('admin');
+  const roleLabel = isUserAdmin ? 'Admin' : 'User';
+  const avatarLetter = isUserAdmin ? 'A' : 'U';
+
   return (
     <Dropdown
       panelClassName="w-60"
@@ -137,9 +142,9 @@ function ProfileMenu() {
           className="flex items-center gap-2.5 rounded-xl py-1 px-1.5 transition hover:opacity-85 focus:outline-none"
         >
           <span className="flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-full bg-pink-500 font-bold text-white text-xs sm:text-sm shadow-sm">
-            U
+            {avatarLetter}
           </span>
-          <span className="hidden text-sm font-bold text-ink sm:block">User</span>
+          <span className="hidden text-sm font-bold text-ink sm:block">{roleLabel}</span>
           <ChevronDown className={cn('h-4 w-4 text-muted transition-transform duration-200', open && 'rotate-180')} />
         </button>
       )}
@@ -168,7 +173,7 @@ function ProfileMenu() {
 
 export function Header({ onMenu }: { onMenu: () => void }) {
   return (
-    <header className="sticky top-0 z-20 bg-canvas/85 px-4 pb-3 pt-4 backdrop-blur-md sm:px-6 lg:px-7">
+    <header className="sticky top-0 z-30 border-b border-line/80 bg-surface px-4 py-3 shadow-sm sm:px-6 sm:py-3.5 lg:px-7">
       <div className="flex items-center justify-between gap-3">
         <button
           onClick={onMenu}

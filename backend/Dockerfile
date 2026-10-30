@@ -23,6 +23,9 @@ RUN ./mvnw dependency:go-offline -B || ./mvnw dependency:resolve -B
 # Copy application source code
 COPY src/ ./src/
 
+# Copy CA certificates directory
+COPY certs/ ./certs/
+
 # Package the Spring Boot executable fat JAR without running unit tests during image build
 RUN ./mvnw clean package -DskipTests -B
 
@@ -39,14 +42,18 @@ RUN groupadd -r vaeto && useradd -r -g vaeto -m -d /app vaeto
 # Copy the compiled JAR artifact from the build stage
 COPY --from=builder /app/target/*.jar /app/app.jar
 
+# Copy CA certificates into production runtime container
+COPY --from=builder /app/certs /app/certs
+
 # Set ownership to the non-privileged user
 RUN chown -R vaeto:vaeto /app
 
 # Switch to the non-root user
 USER vaeto
 
-# Configure container memory limits and default port
+# Configure container memory limits, default port, and default production profile
 ENV PORT=8080 \
+    SPRING_PROFILES_ACTIVE=prod \
     JAVA_OPTS="-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -Djava.security.egd=file:/dev/./urandom"
 
 # Document the default port (Render will inject $PORT dynamically, e.g., 10000)

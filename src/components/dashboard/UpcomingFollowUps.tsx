@@ -1,5 +1,6 @@
+import { useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowRight, ChevronRight } from 'lucide-react';
+import { ArrowRight, Calendar, ChevronRight } from 'lucide-react';
 import { FollowUp, Lead } from '../../types';
 import { dayNumber, monthShort } from '../../utils/date';
 
@@ -10,13 +11,28 @@ interface UpcomingFollowUpsProps {
 
 export function UpcomingFollowUps({ followUps, leads }: UpcomingFollowUpsProps) {
   const navigate = useNavigate();
-  const leadMap = new Map(leads.map((l) => [l.id, l]));
+  const leadMap = useMemo(() => new Map(leads.map((l) => [l.id, l])), [leads]);
 
-  // Sort upcoming pending follow-ups
-  const sorted = [...followUps]
-    .filter((f) => f.status === 'Pending')
-    .sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time))
-    .slice(0, 5);
+  // Today's date string (yyyy-mm-dd) in local time
+  const todayStr = useMemo(() => {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }, []);
+
+  // Sort upcoming pending follow-ups (pending only, today or future, earliest first)
+  const sorted = useMemo(() => {
+    return [...followUps]
+      .filter((f) => {
+        const isPending = f.status === 'Pending';
+        const isUpcoming = !f.date || f.date >= todayStr;
+        return isPending && isUpcoming;
+      })
+      .sort((a, b) => (a.date || '').localeCompare(b.date || '') || (a.time || '').localeCompare(b.time || ''))
+      .slice(0, 5);
+  }, [followUps, todayStr]);
 
   const colors = [
     'border-emerald-400 bg-emerald-400',
@@ -40,7 +56,13 @@ export function UpcomingFollowUps({ followUps, leads }: UpcomingFollowUpsProps) 
 
       <div className="mt-4 space-y-3">
         {sorted.length === 0 ? (
-          <p className="py-6 text-center text-xs text-muted">No upcoming follow-ups scheduled.</p>
+          <div className="flex flex-col items-center justify-center py-8 text-center">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-blue-50/80 dark:bg-blue-900/30">
+              <Calendar className="h-7 w-7 text-indigo-500 dark:text-indigo-400" />
+            </div>
+            <h4 className="mt-3 text-sm font-bold text-navy dark:text-white">No upcoming follow-ups</h4>
+            <p className="mt-1 text-xs text-muted">Your upcoming follow-up activities will appear here.</p>
+          </div>
         ) : (
           sorted.map((item, idx) => {
             const lead = leadMap.get(item.leadId);
@@ -66,11 +88,11 @@ export function UpcomingFollowUps({ followUps, leads }: UpcomingFollowUpsProps) 
                     <div className="flex items-center gap-1.5">
                       <span className={`h-2 w-2 rounded-full ${dotColor}`} />
                       <p className="truncate text-xs font-bold text-ink">
-                        {lead ? `${lead.company} – ${lead.contactName}` : item.title}
+                        {lead ? `${lead.company}${lead.contactName ? ` – ${lead.contactName}` : ''}` : item.title}
                       </p>
                     </div>
-                    <p className="mt-0.5 text-[11px] text-muted">
-                      {item.time} – {item.title}
+                    <p className="mt-0.5 text-[11px] text-muted truncate">
+                      {item.time ? `${item.time} – ` : ''}{item.title}{item.notes ? ` (${item.notes})` : ''}
                     </p>
                   </div>
                 </div>

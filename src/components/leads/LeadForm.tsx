@@ -2,12 +2,14 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { type CountryCode, parsePhoneNumber } from 'libphonenumber-js';
 import { LeadInput, NextFollowUpInput } from '../../context/DataContext';
-import { FollowUpType, LEAD_STATUSES, Lead, LeadStatus, Priority } from '../../types';
+import { FollowUp, FollowUpType, LEAD_STATUSES, Lead, LeadStatus, Priority } from '../../types';
 import { Button, Input, Select, Textarea, PhoneInput } from '../ui';
 import { isEmail, isPhone, normalizePhone, required } from '../../utils/validation';
+import { todayISO } from '../../utils/date';
 
 interface LeadFormProps {
   initialLead?: Lead;
+  initialFollowUp?: FollowUp;
   onSubmit: (lead: LeadInput, nextFollowUp?: NextFollowUpInput) => void;
   loading?: boolean;
   submitLabel?: string;
@@ -15,6 +17,7 @@ interface LeadFormProps {
 
 export function LeadForm({
   initialLead,
+  initialFollowUp,
   onSubmit,
   loading = false,
   submitLabel = 'Save Lead',
@@ -23,8 +26,12 @@ export function LeadForm({
 
   const [company, setCompany] = useState(initialLead?.company || '');
   const [contactName, setContactName] = useState(initialLead?.contactName || '');
+  const [title, setTitle] = useState(initialLead?.title || '');
   const [email, setEmail] = useState(initialLead?.email || '');
   const [phone, setPhone] = useState(initialLead?.phone || '');
+  const [corporatePhone, setCorporatePhone] = useState(initialLead?.corporatePhone || '');
+  const [whatsappNumber, setWhatsappNumber] = useState(initialLead?.whatsappNumber || '');
+  const [completedOn, setCompletedOn] = useState(initialLead?.completedOn || todayISO());
   const [selectedCountry, setSelectedCountry] = useState<CountryCode>(() => {
     if (initialLead?.countryCode) {
       return initialLead.countryCode as CountryCode;
@@ -37,7 +44,7 @@ export function LeadForm({
     }
     return 'IN';
   });
-  const [status, setStatus] = useState<LeadStatus>(initialLead?.status || 'Scheduled');
+  const [status, setStatus] = useState<LeadStatus>(initialLead?.status || 'New');
   const [meetingDate, setMeetingDate] = useState(initialLead?.meetingDate || '');
   const [meetingTime, setMeetingTime] = useState(initialLead?.meetingTime || '');
   const [lastContact, setLastContact] = useState(initialLead?.lastContact || '');
@@ -50,11 +57,11 @@ export function LeadForm({
   const [address, setAddress] = useState(initialLead?.address || 'India');
 
   // Next follow up scheduling
-  const [scheduleFollowUp, setScheduleFollowUp] = useState(false);
-  const [fuDate, setFuDate] = useState('');
-  const [fuTime, setFuTime] = useState('11:00');
-  const [fuTitle, setFuTitle] = useState('Call to discuss proposal');
-  const [fuType, setFuType] = useState<FollowUpType>('Call');
+  const [scheduleFollowUp, setScheduleFollowUp] = useState(Boolean(initialFollowUp));
+  const [fuDate, setFuDate] = useState(initialFollowUp?.date || '');
+  const [fuTime, setFuTime] = useState(initialFollowUp?.time || '11:00');
+  const [fuTitle, setFuTitle] = useState(initialFollowUp?.title || 'Call to discuss proposal');
+  const [fuType, setFuType] = useState<FollowUpType>(initialFollowUp?.type || 'Call');
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -63,18 +70,19 @@ export function LeadForm({
     const reqCompany = required(company, 'Company name');
     if (reqCompany) errs.company = reqCompany;
 
-    const reqContact = required(contactName, 'Contact person');
+    const reqContact = required(contactName, 'Person name');
     if (reqContact) errs.contactName = reqContact;
 
-    const reqEmail = required(email, 'Email address');
-    if (reqEmail) errs.email = reqEmail;
-    else if (!isEmail(email)) errs.email = 'Valid email is required';
+    if (email && !isEmail(email)) {
+      errs.email = 'Valid email is required';
+    }
 
-    const reqPhone = required(phone, 'Phone number');
-    if (reqPhone) {
-      errs.phone = reqPhone;
-    } else if (!isPhone(phone, selectedCountry)) {
+    if (phone && phone.trim() && !isPhone(phone, selectedCountry)) {
       errs.phone = 'Please enter a valid phone number for the selected country.';
+    }
+
+    if (scheduleFollowUp && !fuDate) {
+      errs.fuDate = 'Follow-up date is required';
     }
 
     setErrors(errs);
@@ -90,10 +98,14 @@ export function LeadForm({
     const leadInput: LeadInput = {
       company,
       contactName,
+      title,
       email,
       phone: normalizedPhone || phone,
+      corporatePhone,
+      whatsappNumber,
       countryCode: selectedCountry,
-      status,
+      status: status || 'New',
+      completedOn: completedOn || todayISO(),
       meetingDate,
       meetingTime,
       lastContact,
@@ -107,9 +119,14 @@ export function LeadForm({
       website,
     };
 
-    const nextFollowUp: NextFollowUpInput = scheduleFollowUp && fuDate
-      ? { date: fuDate, time: fuTime, title: fuTitle, type: fuType }
-      : null;
+    let nextFollowUp: NextFollowUpInput | undefined = undefined;
+    if (scheduleFollowUp && fuDate) {
+      nextFollowUp = { date: fuDate, time: fuTime, title: fuTitle, type: fuType };
+    } else if (initialFollowUp && !scheduleFollowUp) {
+      nextFollowUp = null;
+    } else {
+      nextFollowUp = undefined;
+    }
 
     onSubmit(leadInput, nextFollowUp);
   };
@@ -130,12 +147,18 @@ export function LeadForm({
             required
           />
           <Input
-            label="Contact Person"
+            label="Person Name"
             placeholder="e.g. John Doe"
             value={contactName}
             onChange={(e) => setContactName(e.target.value)}
             error={errors.contactName}
             required
+          />
+          <Input
+            label="Title / Designation"
+            placeholder="e.g. Chief Technology Officer"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
           />
           <Input
             label="Email Address"
@@ -144,7 +167,6 @@ export function LeadForm({
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             error={errors.email}
-            required
           />
           <PhoneInput
             label="Phone Number"
@@ -162,7 +184,18 @@ export function LeadForm({
             }}
             defaultCountry={selectedCountry}
             error={errors.phone}
-            required
+          />
+          <Input
+            label="Corporate Phone"
+            placeholder="e.g. +1 555-0199"
+            value={corporatePhone}
+            onChange={(e) => setCorporatePhone(e.target.value)}
+          />
+          <Input
+            label="What's App Number"
+            placeholder="e.g. +91 98765 43210"
+            value={whatsappNumber}
+            onChange={(e) => setWhatsappNumber(e.target.value)}
           />
           <Input
             label="Website"
@@ -181,7 +214,7 @@ export function LeadForm({
 
       <div className="card p-6">
         <h3 className="text-sm font-bold text-navy dark:text-white border-b border-line pb-3">
-          Deal & Pipeline Status
+          Deal Status
         </h3>
         <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
           <Select
@@ -213,6 +246,12 @@ export function LeadForm({
             value={source}
             onChange={(e) => setSource(e.target.value)}
             options={['Website', 'Referral', 'LinkedIn', 'Cold Call', 'Trade Show', 'Email Campaign']}
+          />
+          <Input
+            label="Complete On Date"
+            type="date"
+            value={completedOn}
+            onChange={(e) => setCompletedOn(e.target.value)}
           />
           <Input
             label="Last Connect Date"
@@ -268,7 +307,17 @@ export function LeadForm({
               label="Date"
               type="date"
               value={fuDate}
-              onChange={(e) => setFuDate(e.target.value)}
+              onChange={(e) => {
+                setFuDate(e.target.value);
+                if (errors.fuDate) {
+                  setErrors((prev) => {
+                    const copy = { ...prev };
+                    delete copy.fuDate;
+                    return copy;
+                  });
+                }
+              }}
+              error={errors.fuDate}
               required
             />
             <Input

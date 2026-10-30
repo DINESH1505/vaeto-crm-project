@@ -1,7 +1,9 @@
 package com.vaeto.crm.controller;
 
+import com.vaeto.crm.dto.request.BulkImportRequest;
 import com.vaeto.crm.dto.request.LeadRequest;
 import com.vaeto.crm.dto.response.ApiResponse;
+import com.vaeto.crm.dto.response.BulkImportResultDto;
 import com.vaeto.crm.dto.response.LeadDto;
 import com.vaeto.crm.dto.response.PagedResponse;
 import com.vaeto.crm.security.UserPrincipal;
@@ -13,6 +15,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
 
 @RestController
 @RequestMapping("/api/v1/leads")
@@ -90,6 +95,38 @@ public class LeadController {
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"vaeto_leads.csv\"")
                 .contentType(MediaType.parseMediaType("text/csv"))
+                .body(bytes);
+    }
+
+    @PostMapping("/bulk-import")
+    public ResponseEntity<ApiResponse<BulkImportResultDto>> bulkImportLeads(
+            @RequestBody BulkImportRequest request,
+            @AuthenticationPrincipal UserPrincipal currentUser
+    ) {
+        String actorId = currentUser != null ? String.valueOf(currentUser.getId()) : "1";
+        String actorName = currentUser != null ? currentUser.getName() : "System Admin";
+        BulkImportResultDto result = leadService.bulkImportLeads(request, actorId, actorName);
+        return ResponseEntity.ok(ApiResponse.success("Bulk import completed successfully", result));
+    }
+
+    @PostMapping(value = "/import", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ApiResponse<BulkImportResultDto>> importLeadsFile(
+            @RequestParam("file") MultipartFile file,
+            @RequestParam(defaultValue = "true") boolean skipDuplicates,
+            @AuthenticationPrincipal UserPrincipal currentUser
+    ) {
+        String actorId = currentUser != null ? String.valueOf(currentUser.getId()) : "1";
+        String actorName = currentUser != null ? currentUser.getName() : "System Admin";
+        BulkImportResultDto result = leadService.bulkImportFile(file, skipDuplicates, actorId, actorName);
+        return ResponseEntity.ok(ApiResponse.success("File imported successfully", result));
+    }
+
+    @GetMapping("/import/template")
+    public ResponseEntity<byte[]> downloadExcelTemplate() throws IOException {
+        byte[] bytes = leadService.generateExcelTemplate();
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"vaeto_leads_template.xlsx\"")
+                .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
                 .body(bytes);
     }
 }

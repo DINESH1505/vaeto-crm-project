@@ -3,9 +3,13 @@ import type {
   ActivityEntry,
   AppNotification,
   FollowUp,
+  FollowUpStatus,
+  FollowUpType,
   Lead,
   LeadStatus,
   Meeting,
+  MeetingMode,
+  MeetingStatus,
   Priority,
   Role,
   SessionUser,
@@ -27,7 +31,7 @@ import {
 import { useLocalStorage } from '../hooks';
 import { STORE_KEYS, readStore, writeStore } from '../utils/storage';
 import { uid } from '../utils/helpers';
-import { dateTimeValue, setDateFormat } from '../utils/date';
+import { dateTimeValue, setDateFormat, todayISO } from '../utils/date';
 import { crmApi } from '../api';
 
 export type LeadInput = Omit<Lead, 'id' | 'createdAt' | 'updatedAt' | 'activity'>;
@@ -68,12 +72,12 @@ interface DataApi {
   deleteLeads: (ids: string[]) => Promise<void>;
   addLeadNote: (id: string, note: string) => void;
 
-  addFollowUp: (f: Omit<FollowUp, 'id' | 'createdAt'>) => FollowUp;
-  updateFollowUp: (id: string, patch: Partial<FollowUp>) => void;
-  deleteFollowUp: (id: string) => void;
+  addFollowUp: (f: Omit<FollowUp, 'id' | 'createdAt'>) => Promise<FollowUp>;
+  updateFollowUp: (id: string, patch: Partial<FollowUp>) => Promise<void>;
+  deleteFollowUp: (id: string) => Promise<void>;
 
-  addMeeting: (m: Omit<Meeting, 'id' | 'createdAt'>) => Meeting;
-  updateMeeting: (id: string, patch: Partial<Meeting>) => void;
+  addMeeting: (m: Omit<Meeting, 'id' | 'createdAt'>) => Promise<Meeting>;
+  updateMeeting: (id: string, patch: Partial<Meeting>) => Promise<void>;
   deleteMeeting: (id: string) => void;
 
   addTask: (t: Omit<Task, 'id' | 'createdAt'>) => Task;
@@ -116,47 +120,142 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [isLoadingLeads, setIsLoadingLeads] = useState(false);
   const [dashboardStats, setDashboardStats] = useState<any>(null);
   const [leadCounts, setLeadCounts] = useState<{ total: number; active: number; deleted: number }>({
-    total: 26,
-    active: 9,
-    deleted: 17,
+    total: 0,
+    active: 0,
+    deleted: 0,
   });
 
   const refreshLeads = useCallback(async () => {
     try {
       setIsLoadingLeads(true);
-      const [leadsRes, statsRes]: any = await Promise.allSettled([
-        crmApi.getLeads({ size: 100 }),
+      const [leadsRes, statsRes, followUpsRes, meetingsRes]: any = await Promise.allSettled([
+        crmApi.getLeads({ page: 0, size: 500 }),
         crmApi.getStats(),
+        crmApi.getFollowUps({ page: 0, size: 500 }),
+        crmApi.getMeetings(),
       ]);
 
       if (leadsRes.status === 'fulfilled') {
         const res = leadsRes.value;
         const pagedData = res?.data || res;
-        const items = pagedData?.content || (Array.isArray(pagedData) ? pagedData : null);
-        if (items && Array.isArray(items)) {
-          const mappedLeads: Lead[] = items.map((item: any) => ({
+        const initialItems = pagedData?.content || (Array.isArray(pagedData) ? pagedData : []);
+        const allItems = [...initialItems];
+
+        const totalPages = Number(pagedData?.totalPages) || 1;
+        if (totalPages > 1) {
+          const remainingPagePromises = [];
+          for (let p = 1; p < totalPages; p++) {
+            remainingPagePromises.push(crmApi.getLeads({ page: p, size: 500 }));
+          }
+          const remainingResults = await Promise.all(remainingPagePromises);
+          for (const r of remainingResults) {
+            const rd = r?.data || r;
+            const items = rd?.content || (Array.isArray(rd) ? rd : []);
+            allItems.push(...items);
+          }
+        }
+
+        const seenLeadIds = new Set<string>();
+        const mappedLeads: Lead[] = [];
+        for (const item of allItems) {
+          const sid = String(item.id);
+          if (!seenLeadIds.has(sid)) {
+            seenLeadIds.add(sid);
+            mappedLeads.push({
+              id: sid,
+              company: item.company || 'Unnamed Company',
+              contactName: item.contactName || '',
+              title: item.title || item.jobTitle || '',
+              email: item.email || '',
+              phone: item.phone || '',
+              corporatePhone: item.corporatePhone || '',
+              whatsappNumber: item.whatsappNumber || '',
+              status: (item.status || 'New') as LeadStatus,
+              completedOn: item.completedOn || (item.connectedOn ? String(item.connectedOn) : ''),
+              meetingDate: item.meetingDate || '',
+              meetingTime: item.meetingTime || '',
+              lastContact: item.lastContact || '',
+              nextFollowUpDate: item.nextFollowUpDate || '',
+              comments: item.comments || '',
+              source: item.source || 'Website',
+              industry: item.industry || 'IT Services',
+              dealValue: Number(item.dealValue) || 0,
+              priority: (item.priority || 'Medium') as Priority,
+              ownerId: String(item.ownerId || '1'),
+              address: item.address || 'India',
+              website: item.website || '',
+              createdAt: item.createdAt || nowISO(),
+              updatedAt: item.updatedAt || nowISO(),
+              activity: item.activity || [],
+            });
+          }
+        }
+        setLeads(mappedLeads);
+      }
+
+      if (followUpsRes.status === 'fulfilled') {
+        const fRes = followUpsRes.value;
+        const pagedData = fRes?.data || fRes;
+        const initialFItems = pagedData?.content || (Array.isArray(pagedData) ? pagedData : []);
+        const allFItems = [...initialFItems];
+
+        const fTotalPages = Number(pagedData?.totalPages) || 1;
+        if (fTotalPages > 1) {
+          const fPromises = [];
+          for (let p = 1; p < fTotalPages; p++) {
+            fPromises.push(crmApi.getFollowUps({ page: p, size: 500 }));
+          }
+          const fResults = await Promise.all(fPromises);
+          for (const r of fResults) {
+            const rd = r?.data || r;
+            const items = rd?.content || (Array.isArray(rd) ? rd : []);
+            allFItems.push(...items);
+          }
+        }
+
+        const seenIds = new Set<string>();
+        const mappedFollowUps: FollowUp[] = [];
+        for (const item of allFItems) {
+          const sid = String(item.id);
+          if (!seenIds.has(sid)) {
+            seenIds.add(sid);
+            mappedFollowUps.push({
+              id: sid,
+              leadId: String(item.leadId || ''),
+              title: item.title || 'Follow-up',
+              type: (item.type || 'Call') as FollowUpType,
+              date: item.date || '',
+              time: item.time || '10:00',
+              notes: item.notes || '',
+              status: (item.status === 'Completed' || item.status === 'Done' ? 'Done' : 'Pending') as FollowUpStatus,
+              ownerId: String(item.ownerId || '1'),
+              createdAt: item.createdAt || nowISO(),
+            });
+          }
+        }
+        setFollowUps(mappedFollowUps);
+      }
+
+      if (meetingsRes.status === 'fulfilled') {
+        const mRes = meetingsRes.value;
+        const mItems = mRes?.data || mRes;
+        if (Array.isArray(mItems)) {
+          const mappedMeetings: Meeting[] = mItems.map((item: any) => ({
             id: String(item.id),
-            company: item.company || 'Unnamed Company',
-            contactName: item.contactName || '',
-            email: item.email || '',
-            phone: item.phone || '',
-            status: (item.status || 'New') as LeadStatus,
-            meetingDate: item.meetingDate || '',
-            meetingTime: item.meetingTime || '',
-            lastContact: item.lastContact || '',
-            comments: item.comments || '',
-            source: item.source || 'Website',
-            industry: item.industry || 'IT Services',
-            dealValue: Number(item.dealValue) || 0,
-            priority: (item.priority || 'Medium') as Priority,
+            leadId: String(item.leadId || ''),
+            title: item.title || 'Meeting',
+            date: item.date || '',
+            time: item.time || '10:00',
+            durationMins: Number(item.durationMins) || 30,
+            mode: (item.mode || 'Online') as MeetingMode,
+            location: item.location || '',
+            attendees: item.attendees || '',
+            notes: item.notes || '',
+            status: (item.status || 'Scheduled') as MeetingStatus,
             ownerId: String(item.ownerId || '1'),
-            address: item.address || 'India',
-            website: item.website || '',
             createdAt: item.createdAt || nowISO(),
-            updatedAt: item.updatedAt || nowISO(),
-            activity: item.activity || [],
           }));
-          setLeads(mappedLeads);
+          setMeetings(mappedMeetings);
         }
       }
 
@@ -167,9 +266,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
           setDashboardStats(s);
           if (s.totalLeads?.value !== undefined || s.activeLeads !== undefined) {
             setLeadCounts({
-              total: Number(s.totalLeads?.value ?? 26),
-              active: Number(s.activeLeads ?? 9),
-              deleted: Number(s.deletedLeads ?? 17),
+              total: Number(s.totalLeads?.value ?? 0),
+              active: Number(s.activeLeads ?? 0),
+              deleted: Number(s.deletedLeads ?? 0),
             });
           }
         }
@@ -179,7 +278,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoadingLeads(false);
     }
-  }, [setLeads]);
+  }, [setLeads, setFollowUps, setMeetings]);
 
   useEffect(() => {
     refreshLeads();
@@ -216,35 +315,84 @@ export function DataProvider({ children }: { children: ReactNode }) {
     [setNotifications],
   );
 
+  const inFlightFollowUps = useRef<Set<string>>(new Set());
+
   /** Create / update / cancel the earliest pending follow-up of a lead. */
-  const applyNextFollowUp = (leadId: string, next: NextFollowUpInput | undefined, ownerId: string) => {
+  const applyNextFollowUp = async (leadId: string, next: NextFollowUpInput | undefined, ownerId: string) => {
     if (next === undefined) return;
-    setFollowUps((list) => {
-      const pending = list
-        .filter((f) => f.leadId === leadId && f.status === 'Pending')
-        .sort((a, b) => dateTimeValue(a.date, a.time) - dateTimeValue(b.date, b.time))[0];
-      if (next === null || !next.date) {
-        return pending ? list.filter((f) => f.id !== pending.id) : list;
+
+    const opKey = `${leadId}-${next?.date}-${next?.time}-${next?.title}`;
+    if (inFlightFollowUps.current.has(opKey)) {
+      return;
+    }
+    inFlightFollowUps.current.add(opKey);
+
+    const pending = followUps
+      .filter((f) => String(f.leadId) === String(leadId) && f.status === 'Pending')
+      .sort((a, b) => dateTimeValue(a.date, a.time) - dateTimeValue(b.date, b.time))[0];
+
+    try {
+      if (next && next.date) {
+        if (pending) {
+          await crmApi.updateFollowUp(pending.id, {
+            leadId,
+            title: next.title || pending.title || 'Follow-up',
+            type: next.type || pending.type || 'Call',
+            date: next.date,
+            time: next.time || pending.time || '10:00',
+            notes: pending.notes || '',
+            status: 'Pending',
+            ownerId,
+          });
+          setFollowUps((list) =>
+            list.map((f) => (f.id === pending.id ? { ...f, ...next, title: next.title || f.title } : f))
+          );
+        } else {
+          const res: any = await crmApi.createFollowUp({
+            leadId,
+            title: next.title || 'Follow-up',
+            type: next.type || 'Call',
+            date: next.date,
+            time: next.time || '10:00',
+            notes: '',
+            status: 'Pending',
+            ownerId,
+          });
+          const serverDto = res?.data || res;
+          const realId = serverDto?.id ? String(serverDto.id) : uid('fu');
+
+          setFollowUps((list) => {
+            if (list.some((f) => String(f.id) === String(realId))) return list;
+            return [
+              ...list,
+              {
+                id: realId,
+                leadId,
+                title: next.title || 'Follow-up',
+                type: next.type || 'Call',
+                date: next.date,
+                time: next.time || '10:00',
+                notes: '',
+                status: 'Pending',
+                ownerId,
+                createdAt: serverDto?.createdAt || nowISO(),
+              },
+            ];
+          });
+        }
+        await refreshLeads();
+      } else if (next === null || !next.date) {
+        if (pending) {
+          await crmApi.deleteFollowUp(pending.id);
+          setFollowUps((list) => list.filter((f) => f.id !== pending.id));
+          await refreshLeads();
+        }
       }
-      if (pending) {
-        return list.map((f) => (f.id === pending.id ? { ...f, ...next, title: next.title || f.title } : f));
-      }
-      return [
-        ...list,
-        {
-          id: uid('fu'),
-          leadId,
-          title: next.title || 'Follow-up',
-          type: next.type,
-          date: next.date,
-          time: next.time,
-          notes: '',
-          status: 'Pending',
-          ownerId,
-          createdAt: nowISO(),
-        },
-      ];
-    });
+    } catch (e) {
+      console.warn('Failed to apply next follow-up:', e);
+    } finally {
+      inFlightFollowUps.current.delete(opKey);
+    }
   };
 
   const addLead: DataApi['addLead'] = async (input, next) => {
@@ -253,13 +401,18 @@ export function DataProvider({ children }: { children: ReactNode }) {
     const res: any = await crmApi.createLead({
       company: input.company,
       contactName: input.contactName,
+      title: input.title,
       email: input.email,
       phone: input.phone,
+      corporatePhone: input.corporatePhone,
+      whatsappNumber: input.whatsappNumber,
       countryCode: input.countryCode,
-      status: input.status,
+      status: input.status || 'New',
+      completedOn: input.completedOn,
       meetingDate: input.meetingDate,
       meetingTime: input.meetingTime,
       lastContact: input.lastContact,
+      nextFollowUpDate: next?.date || '',
       comments: input.comments,
       source: input.source,
       industry: input.industry,
@@ -273,6 +426,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
     const lead: Lead = {
       ...input,
+      completedOn: serverLead?.completedOn || input.completedOn || todayISO(),
+      status: (serverLead?.status || input.status || 'New') as LeadStatus,
       id: realId,
       createdAt: serverLead?.createdAt || at,
       updatedAt: serverLead?.updatedAt || at,
@@ -280,6 +435,50 @@ export function DataProvider({ children }: { children: ReactNode }) {
     };
 
     setLeads((l) => [lead, ...l]);
+    setLeadCounts((prev) => ({
+      total: prev.total + 1,
+      active: prev.active + 1,
+      deleted: prev.deleted,
+    }));
+    setDashboardStats((prev: any) => {
+      if (!prev) return prev;
+      const curTotal = prev.totalLeads?.value ?? 0;
+      const curContacts = prev.totalContacts?.value ?? 0;
+      return {
+        ...prev,
+        totalLeads: {
+          ...prev.totalLeads,
+          value: curTotal + 1,
+        },
+        totalContacts: {
+          ...prev.totalContacts,
+          value: curContacts + 1,
+        },
+        activeLeads: (prev.activeLeads ?? curTotal) + 1,
+      };
+    });
+    try {
+      const fetchStats = crmApi.getStats || crmApi.getDashboardStats;
+      if (typeof fetchStats === 'function') {
+        fetchStats().then((s: any) => {
+          if (s) {
+            const statsData = s.data || s;
+            setDashboardStats(statsData);
+            if (statsData.totalLeads?.value !== undefined || statsData.activeLeads !== undefined) {
+              setLeadCounts({
+                total: Number(statsData.totalLeads?.value ?? 0),
+                active: Number(statsData.activeLeads ?? 0),
+                deleted: Number(statsData.deletedLeads ?? 0),
+              });
+            }
+          }
+        }).catch((err) => {
+          console.warn('Non-blocking dashboard stats refresh failed:', err);
+        });
+      }
+    } catch (err) {
+      console.warn('Non-blocking dashboard stats trigger error:', err);
+    }
     applyNextFollowUp(lead.id, next, input.ownerId);
     notify({
       type: 'lead',
@@ -309,6 +508,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     const updatedLead: Lead = {
       ...current,
       ...patch,
+      completedOn: current.completedOn || patch.completedOn || todayISO(),
       updatedAt: nowISO(),
       activity: [...entries, ...current.activity],
     };
@@ -317,13 +517,18 @@ export function DataProvider({ children }: { children: ReactNode }) {
     const res = await crmApi.updateLead(id, {
       company: updatedLead.company,
       contactName: updatedLead.contactName,
+      title: updatedLead.title,
       email: updatedLead.email,
       phone: updatedLead.phone,
+      corporatePhone: updatedLead.corporatePhone,
+      whatsappNumber: updatedLead.whatsappNumber,
       countryCode: updatedLead.countryCode,
       status: updatedLead.status,
+      completedOn: updatedLead.completedOn,
       meetingDate: updatedLead.meetingDate,
       meetingTime: updatedLead.meetingTime,
       lastContact: updatedLead.lastContact,
+      nextFollowUpDate: next !== undefined ? (next?.date || '') : updatedLead.nextFollowUpDate,
       comments: updatedLead.comments,
       source: updatedLead.source,
       industry: updatedLead.industry,
@@ -335,6 +540,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
       list.map((l) => (l.id === id ? updatedLead : l)),
     );
     applyNextFollowUp(id, next, patch.ownerId ?? current.ownerId);
+
+    if (patch.meetingDate !== undefined || patch.meetingTime !== undefined) {
+      await refreshLeads();
+    }
 
     return res;
   };
@@ -357,6 +566,50 @@ export function DataProvider({ children }: { children: ReactNode }) {
     setFollowUps((l) => l.filter((x) => !set.has(x.leadId)));
     setMeetings((l) => l.filter((x) => !set.has(x.leadId)));
     setTasks((l) => l.map((t) => (set.has(t.leadId) ? { ...t, leadId: '' } : t)));
+
+    setLeadCounts((prev) => ({
+      total: prev.total,
+      active: Math.max(0, prev.active - ids.length),
+      deleted: prev.deleted + ids.length,
+    }));
+    setDashboardStats((prev: any) => {
+      if (!prev) return prev;
+      const curTotal = prev.totalLeads?.value ?? 0;
+      const curContacts = prev.totalContacts?.value ?? 0;
+      return {
+        ...prev,
+        totalLeads: {
+          ...prev.totalLeads,
+          value: curTotal,
+        },
+        totalContacts: {
+          ...prev.totalContacts,
+          value: Math.max(0, curContacts - ids.length),
+        },
+        activeLeads: Math.max(0, (prev.activeLeads ?? curContacts) - ids.length),
+        deletedLeads: (prev.deletedLeads ?? 0) + ids.length,
+      };
+    });
+
+    try {
+      const fetchStats = crmApi.getStats || crmApi.getDashboardStats;
+      if (typeof fetchStats === 'function') {
+        const s: any = await fetchStats();
+        if (s) {
+          const statsData = s.data || s;
+          setDashboardStats(statsData);
+          if (statsData.totalLeads?.value !== undefined || statsData.activeLeads !== undefined) {
+            setLeadCounts({
+              total: Number(statsData.totalLeads?.value ?? 0),
+              active: Number(statsData.activeLeads ?? 0),
+              deleted: Number(statsData.deletedLeads ?? 0),
+            });
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to refresh dashboard stats after delete', e);
+    }
   };
 
   const addLeadNote: DataApi['addLeadNote'] = (id, note) => {
@@ -372,39 +625,202 @@ export function DataProvider({ children }: { children: ReactNode }) {
     setLeads((list) => list.map((l) => (l.id === leadId ? { ...l, activity: [activity(type, message), ...l.activity] } : l)));
   };
 
-  const addFollowUp: DataApi['addFollowUp'] = (f) => {
-    const item: FollowUp = { ...f, id: uid('fu'), createdAt: nowISO() };
-    setFollowUps((l) => [...l, item]);
-    logOnLead(f.leadId, 'follow-up', `Follow-up "${f.title}" scheduled for ${f.date}`);
-    return item;
-  };
-  const updateFollowUp: DataApi['updateFollowUp'] = (id, patch) => {
-    const current = followUps.find((f) => f.id === id);
-    setFollowUps((l) => l.map((f) => (f.id === id ? { ...f, ...patch } : f)));
-    if (current && patch.status && patch.status !== current.status) {
-      logOnLead(current.leadId, 'follow-up', `Follow-up "${current.title}" marked ${patch.status}`);
-      if (patch.status === 'Done') {
-        setLeads((list) => list.map((l) => (l.id === current.leadId ? { ...l, lastContact: current.date } : l)));
-      }
+  const addFollowUp: DataApi['addFollowUp'] = async (f) => {
+    try {
+      const res: any = await crmApi.createFollowUp({
+        leadId: f.leadId,
+        title: f.title,
+        type: f.type,
+        date: f.date,
+        time: f.time,
+        notes: f.notes,
+        status: f.status,
+        ownerId: f.ownerId,
+      });
+      const serverDto = res?.data || res;
+      const realId = serverDto?.id ? String(serverDto.id) : uid('fu');
+      const item: FollowUp = {
+        ...f,
+        id: realId,
+        createdAt: serverDto?.createdAt || nowISO(),
+      };
+      setFollowUps((l) => {
+        if (l.some((x) => String(x.id) === String(realId))) return l;
+        return [...l, item];
+      });
+      logOnLead(f.leadId, 'follow-up', `Follow-up "${f.title}" scheduled for ${f.date}`);
+      await refreshLeads();
+      return item;
+    } catch (e) {
+      console.warn('Failed to add follow-up to backend:', e);
+      const fallbackItem: FollowUp = { ...f, id: uid('fu'), createdAt: nowISO() };
+      setFollowUps((l) => [...l, fallbackItem]);
+      return fallbackItem;
     }
   };
-  const deleteFollowUp: DataApi['deleteFollowUp'] = (id) => setFollowUps((l) => l.filter((f) => f.id !== id));
+  const updateFollowUp: DataApi['updateFollowUp'] = async (id, patch) => {
+    const current = followUps.find((f) => f.id === id);
+    try {
+      if (patch.status === 'Done') {
+        await crmApi.completeFollowUp(id);
+      } else {
+        await crmApi.updateFollowUp(id, patch);
+      }
+      setFollowUps((l) => l.map((f) => (f.id === id ? { ...f, ...patch } : f)));
+      if (current && patch.status && patch.status !== current.status) {
+        logOnLead(current.leadId, 'follow-up', `Follow-up "${current.title}" marked ${patch.status}`);
+        if (patch.status === 'Done') {
+          setLeads((list) => list.map((l) => (l.id === current.leadId ? { ...l, lastContact: current.date } : l)));
+        }
+      }
+      await refreshLeads();
+    } catch (error) {
+      console.error('Failed to update follow-up:', error);
+      throw error;
+    }
+  };
+  const deleteFollowUp: DataApi['deleteFollowUp'] = async (id) => {
+    try {
+      await crmApi.deleteFollowUp(id);
+      setFollowUps((l) => l.filter((f) => f.id !== id));
+      await refreshLeads();
+    } catch (error) {
+      console.error('Failed to delete follow-up:', error);
+      throw error;
+    }
+  };
 
-  const addMeeting: DataApi['addMeeting'] = (m) => {
+  const addMeeting: DataApi['addMeeting'] = async (m) => {
     const item: Meeting = { ...m, id: uid('mt'), createdAt: nowISO() };
+
+    // 1. Optimistic update in meetings list
     setMeetings((l) => [...l, item]);
+
+    // 2. Optimistic update in leads list
+    setLeads((list) =>
+      list.map((lead) => {
+        if (String(lead.id) === String(m.leadId)) {
+          return {
+            ...lead,
+            meetingDate: m.date,
+            meetingTime: m.time,
+            status: lead.status === 'New' ? 'Meeting Scheduled' : lead.status,
+            updatedAt: nowISO(),
+          };
+        }
+        return lead;
+      })
+    );
+
+    // 3. Optimistic update in dashboard stats for Today's Meetings
+    const today = todayISO();
+    if (m.date === today && m.status !== 'Cancelled') {
+      setDashboardStats((prev: any) => {
+        if (!prev) return prev;
+        const currentVal = prev.todaysMeetings?.value ?? 0;
+        return {
+          ...prev,
+          todaysMeetings: {
+            ...prev.todaysMeetings,
+            value: currentVal + 1,
+            trend: '+100% vs last week',
+          },
+        };
+      });
+    }
+
     logOnLead(m.leadId, 'meeting', `Meeting "${m.title}" scheduled for ${m.date} ${m.time}`);
     notify({ type: 'meeting', title: 'Meeting scheduled', message: `${m.title} on ${m.date} at ${m.time}.`, link: '/calendar', userId: m.ownerId });
+
+    // 4. Persist to backend and sync all state
+    try {
+      await crmApi.createMeeting({
+        leadId: m.leadId,
+        title: m.title,
+        date: m.date,
+        time: m.time,
+        durationMins: m.durationMins,
+        mode: m.mode,
+        location: m.location,
+        attendees: m.attendees,
+        notes: m.notes,
+        status: m.status,
+        ownerId: m.ownerId,
+      });
+      await refreshLeads();
+    } catch (err) {
+      console.error('Failed to create meeting:', err);
+    }
+
     return item;
   };
-  const updateMeeting: DataApi['updateMeeting'] = (id, patch) => {
+  const updateMeeting: DataApi['updateMeeting'] = async (id, patch) => {
     const current = meetings.find((m) => m.id === id);
+    if (!current) return;
+
+    const previousStatus = current.status;
+    const nextStatus = patch.status || previousStatus;
+
+    // 1. Optimistic update in meetings list
     setMeetings((l) => l.map((m) => (m.id === id ? { ...m, ...patch } : m)));
-    if (current && patch.status && patch.status !== current.status) {
+
+    // 2. Optimistic update in dashboard stats for Completed Meetings
+    if (patch.status && patch.status !== previousStatus) {
       logOnLead(current.leadId, 'meeting', `Meeting "${current.title}" marked ${patch.status}`);
+
+      setDashboardStats((prev: any) => {
+        if (!prev) return prev;
+        const currentCompleted = prev.completedMeetings?.value ?? 0;
+        let nextCompleted = currentCompleted;
+        if (nextStatus === 'Completed' && previousStatus !== 'Completed') {
+          nextCompleted = currentCompleted + 1;
+        } else if (previousStatus === 'Completed' && nextStatus !== 'Completed') {
+          nextCompleted = Math.max(0, currentCompleted - 1);
+        }
+
+        const currentToday = prev.todaysMeetings?.value ?? 0;
+        let nextToday = currentToday;
+        const isScheduledToday = current.date === todayISO();
+        if (isScheduledToday) {
+          if (nextStatus === 'Completed' && previousStatus !== 'Completed') {
+            nextToday = Math.max(0, currentToday - 1);
+          } else if (previousStatus === 'Completed' && nextStatus !== 'Completed') {
+            nextToday = currentToday + 1;
+          }
+        }
+
+        return {
+          ...prev,
+          completedMeetings: {
+            ...prev.completedMeetings,
+            value: nextCompleted,
+          },
+          todaysMeetings: {
+            ...prev.todaysMeetings,
+            value: nextToday,
+          },
+        };
+      });
+    }
+
+    // 3. Persist to backend and sync with database as source of truth
+    try {
+      if (patch.status === 'Completed') {
+        await crmApi.completeMeeting(id);
+      } else if (patch.status === 'Scheduled') {
+        await crmApi.reopenMeeting(id);
+      } else {
+        await crmApi.updateMeeting(id, { ...current, ...patch });
+      }
+      await refreshLeads();
+    } catch (err) {
+      console.error('Failed to update meeting:', err);
     }
   };
-  const deleteMeeting: DataApi['deleteMeeting'] = (id) => setMeetings((l) => l.filter((m) => m.id !== id));
+  const deleteMeeting: DataApi['deleteMeeting'] = (id) => {
+    setMeetings((l) => l.filter((m) => m.id !== id));
+    crmApi.deleteMeeting(id).then(() => refreshLeads()).catch(() => {});
+  };
 
   const addTask: DataApi['addTask'] = (t) => {
     const item: Task = { ...t, id: uid('tk'), createdAt: nowISO() };

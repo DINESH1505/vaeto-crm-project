@@ -10,13 +10,18 @@ public class LeadRequest {
     @NotBlank(message = "Contact name is required")
     private String contactName;
 
+    private String title;
     private String email;
     private String phone;
+    private String corporatePhone;
+    private String whatsappNumber;
     private String countryCode;
-    private String status = "Pending";
+    private String status = "New";
+    private String completedOn;
     private String meetingDate;
     private String meetingTime;
     private String lastContact;
+    private String nextFollowUpDate;
     private String comments;
     private String source = "Website";
     private String industry;
@@ -71,11 +76,11 @@ public class LeadRequest {
     }
 
     public String getStatus() {
-        return status;
+        return (status == null || status.trim().isEmpty()) ? "New" : status.trim();
     }
 
     public void setStatus(String status) {
-        this.status = status;
+        this.status = (status == null || status.trim().isEmpty()) ? "New" : status.trim();
     }
 
     public String getMeetingDate() {
@@ -142,6 +147,14 @@ public class LeadRequest {
         this.priority = priority;
     }
 
+    public String getNextFollowUpDate() {
+        return nextFollowUpDate;
+    }
+
+    public void setNextFollowUpDate(String nextFollowUpDate) {
+        this.nextFollowUpDate = nextFollowUpDate;
+    }
+
     public String getOwnerId() {
         return ownerId;
     }
@@ -164,5 +177,37 @@ public class LeadRequest {
 
     public void setWebsite(String website) {
         this.website = website;
+    }
+
+    public String getTitle() {
+        return title;
+    }
+
+    public void setTitle(String title) {
+        this.title = title;
+    }
+
+    public String getCorporatePhone() {
+        return corporatePhone;
+    }
+
+    public void setCorporatePhone(String corporatePhone) {
+        this.corporatePhone = corporatePhone;
+    }
+
+    public String getWhatsappNumber() {
+        return whatsappNumber;
+    }
+
+    public void setWhatsappNumber(String whatsappNumber) {
+        this.whatsappNumber = whatsappNumber;
+    }
+
+    public String getCompletedOn() {
+        return completedOn;
+    }
+
+    public void setCompletedOn(String completedOn) {
+        this.completedOn = completedOn;
     }
 }

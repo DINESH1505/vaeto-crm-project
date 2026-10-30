@@ -11,14 +11,24 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 
 @Repository
-public interface FollowUpRepository extends JpaRepository<FollowUp, String> {
+public interface FollowUpRepository extends JpaRepository<FollowUp, Long> {
 
-    List<FollowUp> findByOwnerId(String ownerId);
+    boolean existsByLeadId(Long leadId);
 
-    Page<FollowUp> findByOwnerId(String ownerId, Pageable pageable);
+    List<FollowUp> findByLeadId(Long leadId);
 
-    @Query(value = "SELECT * FROM follow_ups WHERE status = :status ORDER BY scheduled_date ASC LIMIT 10", nativeQuery = true)
+    List<FollowUp> findByResponsibleUserId(Long responsibleUserId);
+
+    Page<FollowUp> findByResponsibleUserId(Long responsibleUserId, Pageable pageable);
+
+    @Query(value = "SELECT * FROM follow_ups WHERE status = 'Pending' AND scheduled_date >= CURRENT_DATE() ORDER BY scheduled_date ASC LIMIT 10", nativeQuery = true)
+    List<FollowUp> findUpcomingPending();
+
+    @Query(value = "SELECT * FROM follow_ups WHERE LOWER(status) = LOWER(:status) ORDER BY scheduled_date ASC LIMIT 10", nativeQuery = true)
     List<FollowUp> findTop10ByStatusOrderByDateAsc(@Param("status") String status);
+
+    @Query(value = "SELECT COUNT(*) FROM follow_ups WHERE LOWER(status) = 'pending'", nativeQuery = true)
+    long countPending();
 
     @Query(value = "SELECT COUNT(*) FROM follow_ups WHERE LOWER(status) = LOWER(:status)", nativeQuery = true)
     long countByStatus(@Param("status") String status);

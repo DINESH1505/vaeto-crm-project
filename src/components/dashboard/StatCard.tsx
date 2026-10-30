@@ -25,6 +25,9 @@ export function StatCard({
   subInfo,
 }: StatCardProps) {
   const chartData = spark.map((val, idx) => ({ idx, val }));
+  const formattedTrend = typeof trend === 'number'
+    ? (trend === 0 ? '0%' : trend > 0 ? `+${trend}%` : `${trend}%`)
+    : String(trend).replace(/\s*vs last week$/i, '');
 
   return (
     <div className="card flex flex-col justify-between p-4 sm:p-5">
@@ -42,7 +45,7 @@ export function StatCard({
           </span>
           <div className="mt-1 flex items-center gap-1 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
             <ArrowUpRight className="h-3 w-3" />
-            <span>{typeof trend === 'number' ? (trend >= 0 ? `+${trend}%` : `${trend}%`) : trend}</span>
+            <span>{formattedTrend}</span>
             <span className="text-muted font-normal">vs last week</span>
           </div>
           {subInfo && (

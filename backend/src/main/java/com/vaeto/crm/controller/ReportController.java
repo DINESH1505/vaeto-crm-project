@@ -29,9 +29,11 @@ public class ReportController {
     @GetMapping
     public ResponseEntity<ApiResponse<Map<String, Object>>> getReports() {
         Map<String, Object> reports = new HashMap<>();
-        reports.put("totalLeads", leadRepository.count());
-        reports.put("scheduledLeads", leadRepository.countByStatus("Scheduled"));
-        reports.put("completedLeads", leadRepository.countByStatus("Completed"));
+        reports.put("totalLeads", leadRepository.countTotal());
+        reports.put("activeLeads", leadRepository.countActive());
+        reports.put("deletedLeads", leadRepository.countDeleted());
+        reports.put("scheduledLeads", leadRepository.countByStatusActive("Scheduled"));
+        reports.put("completedLeads", leadRepository.countByStatusActive("Completed"));
         reports.put("pendingFollowUps", followUpRepository.countByStatus("Pending"));
         reports.put("completedMeetings", meetingRepository.countByStatus("Completed"));
 

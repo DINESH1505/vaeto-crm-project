@@ -1,19 +1,22 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Download,
   Plus,
   Search,
   Trash2,
+  Upload,
 } from 'lucide-react';
 import { LeadTable } from '../../components/leads/LeadTable';
 import { LeadViewModal } from '../../components/leads/LeadViewModal';
+import { ImportLeadsModal } from '../../components/leads/ImportLeadsModal';
 import { Button, ConfirmDialog } from '../../components/ui';
 import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
 import { useToast } from '../../context/ToastContext';
 import { downloadFile, toCSV } from '../../utils/helpers';
-import { nextFollowUpMap } from '../../utils/stats';
+import { formatDate } from '../../utils/date';
+import { nextFollowUpMap, nextMeetingMap } from '../../utils/stats';
 import { LEAD_STATUSES, Lead } from '../../types';
 
 export default function ManageLeads() {
@@ -21,7 +24,7 @@ export default function ManageLeads() {
   const initialQuery = params.get('q') || '';
   const initialStatus = params.get('status') || 'All';
 
-  const { leads, followUps, deleteLeads, refreshLeads, users } = useData();
+  const { leads, followUps, meetings, deleteLeads, refreshLeads, users } = useData();
   const { isAdmin, can } = useAuth();
   const toast = useToast();
   const navigate = useNavigate();
@@ -33,18 +36,26 @@ export default function ManageLeads() {
   const [leadToDelete, setLeadToDelete] = useState<Lead | null>(null);
   const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false);
   const [selectedLeadForView, setSelectedLeadForView] = useState<Lead | null>(null);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+
+  useEffect(() => {
+    refreshLeads();
+  }, [refreshLeads]);
 
   const followUpMap = useMemo(() => nextFollowUpMap(followUps), [followUps]);
+  const meetingMap = useMemo(() => nextMeetingMap(meetings), [meetings]);
 
   const filtered = useMemo(() => {
     return leads.filter((lead) => {
       const q = search.toLowerCase().trim();
       const matchSearch =
         !q ||
-        lead.company.toLowerCase().includes(q) ||
-        lead.contactName.toLowerCase().includes(q) ||
-        lead.email.toLowerCase().includes(q) ||
-        lead.phone.includes(q);
+        (lead.company && lead.company.toLowerCase().includes(q)) ||
+        (lead.contactName && lead.contactName.toLowerCase().includes(q)) ||
+        (lead.email && lead.email.toLowerCase().includes(q)) ||
+        (lead.phone && lead.phone.toLowerCase().includes(q)) ||
+        (lead.corporatePhone && lead.corporatePhone.toLowerCase().includes(q)) ||
+        (lead.whatsappNumber && lead.whatsappNumber.toLowerCase().includes(q));
 
       const matchStatus = statusFilter === 'All' || lead.status === statusFilter;
       const matchPriority = priorityFilter === 'All' || lead.priority === priorityFilter;
@@ -68,20 +79,22 @@ export default function ManageLeads() {
   };
 
   const handleExportCSV = () => {
-    const rows = filtered.map((l) => ({
-      ID: l.id,
-      Company: l.company,
-      Contact: l.contactName,
-      Email: l.email,
-      Phone: l.phone,
-      Status: l.status,
-      Priority: l.priority,
-      Value: l.dealValue,
-      Industry: l.industry,
-      Source: l.source,
-      'Last Contact': l.lastContact,
-      'Meeting Date': l.meetingDate,
-      Comments: l.comments,
+    const rows = filtered.map((l, index) => ({
+      'S.NO': index + 1,
+      'COMPANY NAME': l.company,
+      'PERSON NAME': l.contactName,
+      'TITLE': l.title || '',
+      'EMAIL': l.email || '',
+      'PHONE NUMBER': l.phone || '',
+      'CORPORATE PHONE': l.corporatePhone || '',
+      "WHAT'S APP NUMBER": l.whatsappNumber || '',
+      'COMPLETE ON': l.completedOn ? formatDate(l.completedOn, 'DD/MM/YYYY') : '',
+      'MEETING DATE': l.meetingDate || '',
+      'MEETING TIME': l.meetingTime || '',
+      'LAST CONTACTED': l.lastContact || '',
+      'STATUS': l.status || 'New',
+      'COMMENT': l.comments || '',
+      'FOLLOW-UPS': followUpMap?.get(l.id)?.date || '',
     }));
     const csv = toCSV(rows);
     downloadFile(`leads_export_${new Date().toISOString().slice(0, 10)}.csv`, csv, 'text/csv');
@@ -130,6 +143,17 @@ export default function ManageLeads() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          {can('leads.create') && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsImportModalOpen(true)}
+              leftIcon={<Upload className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />}
+            >
+              Import Leads
+            </Button>
+          )}
+
           {can('leads.export') && (
             <Button
               variant="outline"
@@ -212,6 +236,7 @@ export default function ManageLeads() {
         <LeadTable
           leads={filtered}
           followUpMap={followUpMap}
+          meetingMap={meetingMap}
           isAdmin={isAdmin}
           onView={(lead) => setSelectedLeadForView(lead)}
           onDelete={(lead) => setLeadToDelete(lead)}
@@ -256,6 +281,13 @@ export default function ManageLeads() {
         tone="danger"
         onConfirm={handleBulkDelete}
         onCancel={() => setBulkDeleteConfirm(false)}
+      />
+
+      {/* Bulk Import Leads Modal */}
+      <ImportLeadsModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        onSuccess={refreshLeads}
       />
     </div>
   );

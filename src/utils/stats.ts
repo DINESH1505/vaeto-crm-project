@@ -39,7 +39,7 @@ export function computeDashboardStats(leads: Lead[], followUps: FollowUp[], meet
   const contactDates = leads.map((l) => l.lastContact).filter(Boolean);
   const contactsPrev = contactDates.filter((d) => d <= weekAgo).length;
 
-  const active = meetings.filter((m) => m.status !== 'Cancelled');
+  const active = meetings.filter((m) => m.status !== 'Cancelled' && m.status !== 'Completed');
   const todays = active.filter((m) => m.date === today).length;
   const sameDayLastWeek = active.filter((m) => m.date === weekAgo).length;
   const meetingSpark = Array.from({ length: 7 }, (_, i) => {
@@ -104,5 +104,34 @@ export function nextFollowUpMap(followUps: FollowUp[]): Map<string, FollowUp> {
     .forEach((f) => {
       if (!map.has(f.leadId)) map.set(f.leadId, f);
     });
+  return map;
+}
+
+/** Closest upcoming non-completed scheduled meeting per lead. */
+export function nextMeetingMap(meetings: Meeting[]): Map<string, Meeting> {
+  const map = new Map<string, Meeting>();
+  const today = todayISO();
+  const active = meetings.filter((m) => m.status !== 'Cancelled' && m.status !== 'Completed');
+
+  const byLead = new Map<string, Meeting[]>();
+  for (const m of active) {
+    if (!m.leadId) continue;
+    const key = String(m.leadId);
+    const list = byLead.get(key) || [];
+    list.push(m);
+    byLead.set(key, list);
+  }
+
+  for (const [leadId, list] of byLead.entries()) {
+    // Upcoming or today's scheduled meetings
+    const upcoming = list
+      .filter((m) => m.date >= today)
+      .sort((a, b) => a.date.localeCompare(b.date) || (a.time || '').localeCompare(b.time || ''));
+
+    if (upcoming.length > 0) {
+      map.set(leadId, upcoming[0]);
+    }
+  }
+
   return map;
 }

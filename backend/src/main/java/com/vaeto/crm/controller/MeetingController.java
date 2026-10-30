@@ -45,10 +45,22 @@ public class MeetingController {
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<MeetingDto>> updateMeeting(
             @PathVariable String id,
-            @Valid @RequestBody MeetingRequest request
+            @RequestBody MeetingRequest request
     ) {
         MeetingDto updated = meetingService.updateMeeting(id, request);
         return ResponseEntity.ok(ApiResponse.success("Meeting updated successfully", updated));
+    }
+
+    @PatchMapping("/{id}/complete")
+    public ResponseEntity<ApiResponse<MeetingDto>> markComplete(@PathVariable String id) {
+        MeetingDto updated = meetingService.markCompleted(id);
+        return ResponseEntity.ok(ApiResponse.success("Meeting marked as completed", updated));
+    }
+
+    @PatchMapping("/{id}/reopen")
+    public ResponseEntity<ApiResponse<MeetingDto>> markScheduled(@PathVariable String id) {
+        MeetingDto updated = meetingService.markScheduled(id);
+        return ResponseEntity.ok(ApiResponse.success("Meeting marked as scheduled", updated));
     }
 
     @DeleteMapping("/{id}")

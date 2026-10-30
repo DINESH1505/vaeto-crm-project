@@ -16,12 +16,26 @@ export function setDateFormat(format: SystemSettings['dateFormat']) {
 
 const pad = (n: number) => String(n).padStart(2, '0');
 
-/** Parse a yyyy-mm-dd string as a local date (avoids UTC shifting). */
+/** Parse a yyyy-mm-dd or dd/mm/yyyy string as a local date (avoids UTC shifting). */
 export function parseISODate(value: string): Date | null {
   if (!value) return null;
-  const [y, m, d] = value.slice(0, 10).split('-').map(Number);
-  if (!y || !m || !d) return null;
-  return new Date(y, m - 1, d);
+  const trimmed = value.trim();
+  if (/^\d{4}-\d{2}-\d{2}/.test(trimmed)) {
+    const [y, m, d] = trimmed.slice(0, 10).split('-').map(Number);
+    if (!y || !m || !d) return null;
+    return new Date(y, m - 1, d);
+  }
+  if (/^\d{1,2}[/-]\d{1,2}[/-]\d{4}/.test(trimmed)) {
+    const parts = trimmed.slice(0, 10).split(/[/-]/).map(Number);
+    const d = parts[0];
+    const m = parts[1];
+    const y = parts[2];
+    if (!y || !m || !d) return null;
+    return new Date(y, m - 1, d);
+  }
+  const parsed = new Date(trimmed);
+  if (!isNaN(parsed.getTime())) return parsed;
+  return null;
 }
 
 export function toISODate(date: Date): string {
@@ -60,14 +74,21 @@ export function formatDate(value: string, format = activeFormat): string {
   }
 }
 
-/** "10:00" → "10:00 AM" */
+/** "16:00" → "4:00 PM" */
 export function formatTime(value: string): string {
-  if (!value) return '-';
-  const [h, m] = value.split(':').map(Number);
-  if (Number.isNaN(h) || Number.isNaN(m)) return '-';
+  if (!value || value === '-') return '-';
+  const trimmed = value.trim();
+  if (trimmed.toUpperCase().includes('AM') || trimmed.toUpperCase().includes('PM')) {
+    return trimmed;
+  }
+  const parts = trimmed.split(':');
+  if (parts.length < 2) return trimmed;
+  const h = parseInt(parts[0], 10);
+  const m = parseInt(parts[1], 10);
+  if (Number.isNaN(h) || Number.isNaN(m)) return trimmed;
   const suffix = h >= 12 ? 'PM' : 'AM';
   const hour = h % 12 === 0 ? 12 : h % 12;
-  return `${pad(hour)}:${pad(m)} ${suffix}`;
+  return `${hour}:${pad(m)} ${suffix}`;
 }
 
 export function formatDateTime(iso: string): string {

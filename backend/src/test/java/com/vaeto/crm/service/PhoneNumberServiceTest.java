@@ -80,11 +80,12 @@ class PhoneNumberServiceTest {
     }
 
     @Test
-    @DisplayName("Should reject null or empty phone numbers")
+    @DisplayName("Should return null for null or empty phone numbers when optional")
     void testEmptyPhone() {
         assertFalse(phoneNumberService.isValid(null, "IN"));
         assertFalse(phoneNumberService.isValid("", "IN"));
-        assertThrows(BadRequestException.class, () -> phoneNumberService.validateAndNormalize(null, "IN"));
-        assertThrows(BadRequestException.class, () -> phoneNumberService.validateAndNormalize("   ", "IN"));
+        assertNull(phoneNumberService.validateAndNormalize(null, "IN"));
+        assertNull(phoneNumberService.validateAndNormalize("", "IN"));
+        assertNull(phoneNumberService.validateAndNormalize("   ", "IN"));
     }
 }

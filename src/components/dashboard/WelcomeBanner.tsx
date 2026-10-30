@@ -2,7 +2,7 @@ import { Sparkles } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { greeting } from '../../utils/date';
 
-export function WelcomeBanner() {
+export function WelcomeBanner({ hasActivity = false }: { hasActivity?: boolean }) {
   const { user, isAdmin } = useAuth();
   const displayName = isAdmin ? 'Admin' : (user?.name || 'User');
 
@@ -31,7 +31,7 @@ export function WelcomeBanner() {
             <span className="w-2 rounded-t bg-brand-600 h-7" />
           </div>
           <span className="ml-2 text-xs font-bold text-brand-700 dark:text-brand-300">
-            Pipeline Active
+            {hasActivity ? 'Pipeline Active' : 'No Activity Yet'}
           </span>
         </div>
       </div>

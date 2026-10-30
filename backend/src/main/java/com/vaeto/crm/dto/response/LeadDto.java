@@ -7,12 +7,17 @@ public class LeadDto {
     private String id;
     private String company;
     private String contactName;
+    private String title;
     private String email;
     private String phone;
+    private String corporatePhone;
+    private String whatsappNumber;
     private String status;
+    private String completedOn;
     private String meetingDate;
     private String meetingTime;
     private String lastContact;
+    private String nextFollowUpDate;
     private String comments;
     private String source;
     private String industry;
@@ -141,6 +146,14 @@ public class LeadDto {
         this.priority = priority;
     }
 
+    public String getNextFollowUpDate() {
+        return nextFollowUpDate;
+    }
+
+    public void setNextFollowUpDate(String nextFollowUpDate) {
+        this.nextFollowUpDate = nextFollowUpDate;
+    }
+
     public String getOwnerId() {
         return ownerId;
     }
@@ -187,5 +200,37 @@ public class LeadDto {
 
     public void setIsDeleted(Boolean isDeleted) {
         this.isDeleted = isDeleted;
+    }
+
+    public String getTitle() {
+        return title;
+    }
+
+    public void setTitle(String title) {
+        this.title = title;
+    }
+
+    public String getCorporatePhone() {
+        return corporatePhone;
+    }
+
+    public void setCorporatePhone(String corporatePhone) {
+        this.corporatePhone = corporatePhone;
+    }
+
+    public String getWhatsappNumber() {
+        return whatsappNumber;
+    }
+
+    public void setWhatsappNumber(String whatsappNumber) {
+        this.whatsappNumber = whatsappNumber;
+    }
+
+    public String getCompletedOn() {
+        return completedOn;
+    }
+
+    public void setCompletedOn(String completedOn) {
+        this.completedOn = completedOn;
     }
 }

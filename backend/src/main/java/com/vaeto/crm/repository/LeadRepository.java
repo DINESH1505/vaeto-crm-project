@@ -15,6 +15,9 @@ public interface LeadRepository extends JpaRepository<Lead, Long> {
 
     long countByStatus(String status);
 
+    @Query("SELECT COUNT(l) FROM Lead l WHERE (l.isDeleted IS NULL OR l.isDeleted = false) AND LOWER(l.status) = LOWER(:status)")
+    long countByStatusActive(@Param("status") String status);
+
     @Query("SELECT COUNT(l) FROM Lead l WHERE (l.isDeleted IS NULL OR l.isDeleted = false)")
     long countActive();
 
@@ -42,4 +45,7 @@ public interface LeadRepository extends JpaRepository<Lead, Long> {
 
     @Query("SELECT l.status, COUNT(l) FROM Lead l WHERE (l.isDeleted IS NULL OR l.isDeleted = false) GROUP BY l.status")
     List<Object[]> countByStatusGrouped();
+
+    @Query("SELECT LOWER(l.email) FROM Lead l WHERE (l.isDeleted IS NULL OR l.isDeleted = false) AND l.email IS NOT NULL")
+    List<String> findAllActiveEmails();
 }

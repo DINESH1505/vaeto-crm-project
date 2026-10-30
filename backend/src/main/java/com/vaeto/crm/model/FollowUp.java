@@ -1,6 +1,7 @@
 package com.vaeto.crm.model;
 
 import jakarta.persistence.*;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
@@ -8,32 +9,27 @@ import java.time.LocalDateTime;
 public class FollowUp {
 
     @Id
-    @Column(name = "id", nullable = false, length = 64)
-    private String id;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id")
+    private Long id;
 
-    @Column(name = "lead_id", length = 64)
-    private String leadId;
+    @Column(name = "lead_id", nullable = false)
+    private Long leadId;
 
-    @Column(name = "title", nullable = false, length = 200)
-    private String title;
-
-    @Column(name = "type", length = 50)
-    private String type = "Call";
-
-    @Column(name = "date", length = 50)
-    private String date;
-
-    @Column(name = "time", length = 50)
-    private String time;
+    @Column(name = "scheduled_date", nullable = false)
+    private LocalDate scheduledDate;
 
     @Column(name = "notes", columnDefinition = "TEXT")
     private String notes;
 
-    @Column(name = "status", length = 50)
+    @Column(name = "status", nullable = false)
     private String status = "Pending";
 
-    @Column(name = "owner_id", length = 64)
-    private String ownerId;
+    @Column(name = "completed_date")
+    private LocalDate completedDate;
+
+    @Column(name = "responsible_user_id", nullable = false)
+    private Long responsibleUserId = 1L;
 
     @Column(name = "created_at")
     private LocalDateTime createdAt = LocalDateTime.now();
@@ -45,52 +41,28 @@ public class FollowUp {
     }
 
     // Getters and Setters
-    public String getId() {
+    public Long getId() {
         return id;
     }
 
-    public void setId(String id) {
+    public void setId(Long id) {
         this.id = id;
     }
 
-    public String getLeadId() {
+    public Long getLeadId() {
         return leadId;
     }
 
-    public void setLeadId(String leadId) {
+    public void setLeadId(Long leadId) {
         this.leadId = leadId;
     }
 
-    public String getTitle() {
-        return title;
+    public LocalDate getScheduledDate() {
+        return scheduledDate;
     }
 
-    public void setTitle(String title) {
-        this.title = title;
-    }
-
-    public String getType() {
-        return type;
-    }
-
-    public void setType(String type) {
-        this.type = type;
-    }
-
-    public String getDate() {
-        return date;
-    }
-
-    public void setDate(String date) {
-        this.date = date;
-    }
-
-    public String getTime() {
-        return time;
-    }
-
-    public void setTime(String time) {
-        this.time = time;
+    public void setScheduledDate(LocalDate scheduledDate) {
+        this.scheduledDate = scheduledDate;
     }
 
     public String getNotes() {
@@ -109,12 +81,20 @@ public class FollowUp {
         this.status = status;
     }
 
-    public String getOwnerId() {
-        return ownerId;
+    public LocalDate getCompletedDate() {
+        return completedDate;
     }
 
-    public void setOwnerId(String ownerId) {
-        this.ownerId = ownerId;
+    public void setCompletedDate(LocalDate completedDate) {
+        this.completedDate = completedDate;
+    }
+
+    public Long getResponsibleUserId() {
+        return responsibleUserId;
+    }
+
+    public void setResponsibleUserId(Long responsibleUserId) {
+        this.responsibleUserId = responsibleUserId;
     }
 
     public LocalDateTime getCreatedAt() {

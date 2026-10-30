@@ -39,16 +39,21 @@ export interface Lead {
   id: string;
   company: string;
   contactName: string;
+  title?: string;
   email: string;
   phone: string;
+  corporatePhone?: string;
+  whatsappNumber?: string;
   countryCode?: string;
   status: LeadStatus;
+  completedOn?: string;
   /** Date of the most recent / planned meeting (yyyy-mm-dd). */
   meetingDate: string;
   /** Meeting time (HH:mm). */
   meetingTime: string;
   /** Date of last contact (yyyy-mm-dd). Empty when never contacted. */
   lastContact: string;
+  nextFollowUpDate?: string;
   comments: string;
   source: string;
   industry: string;
